@@ -22,7 +22,11 @@ interface NavItem {
   badge?: string;
 }
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   const { activeTab, setActiveTab, setIsNewTradeModalOpen } = useTradeContext();
 
   const navItems: NavItem[] = [
@@ -59,8 +63,11 @@ export const Sidebar: React.FC = () => {
       {/* New Trade Primary Button in Sidebar */}
       <div className="px-4 py-3">
         <button
-          onClick={() => setIsNewTradeModalOpen(true)}
-          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
+          onClick={() => {
+            setIsNewTradeModalOpen(true);
+            onNavigate?.();
+          }}
+          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] cursor-pointer"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           + New Trade
@@ -76,8 +83,11 @@ export const Sidebar: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+              onClick={() => {
+                setActiveTab(item.id);
+                onNavigate?.();
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                 isActive
                   ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-inner font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-[#131d35]/60'

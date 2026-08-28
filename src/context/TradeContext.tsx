@@ -254,11 +254,12 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveCloudSetting('challenge', DEFAULT_CHALLENGE);
   };
 
-  // Save Dhan Credentials handler
+  // Save Dhan Credentials handler (Cross-device Cloud Sync)
   const saveDhanCredentials = (clientId: string, accessToken: string) => {
     const creds = { clientId: clientId.trim(), accessToken: accessToken.trim() };
     setDhanCredentials(creds);
     localStorage.setItem(DHAN_CREDS_STORAGE_KEY, JSON.stringify(creds));
+    saveCloudSetting('dhanCredentials', creds);
   };
 
   // Sync from DhanHQ API
@@ -290,7 +291,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return res;
   };
 
-  // Initial cloud fetch on startup (Laptop <-> Phone sync)
+  // Initial cloud fetch on startup (Complete Laptop <-> Phone sync)
   useEffect(() => {
     fetchCloudTrades().then(cloudTrades => {
       if (cloudTrades && Array.isArray(cloudTrades)) {
@@ -308,6 +309,22 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (cloudSettings.userProfile) {
           setUserProfile(cloudSettings.userProfile);
           localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(cloudSettings.userProfile));
+        }
+        if (cloudSettings.strategies && Array.isArray(cloudSettings.strategies)) {
+          setStrategies(cloudSettings.strategies);
+          localStorage.setItem(STRATEGIES_STORAGE_KEY, JSON.stringify(cloudSettings.strategies));
+        }
+        if (cloudSettings.rules && Array.isArray(cloudSettings.rules)) {
+          setRules(cloudSettings.rules);
+          localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(cloudSettings.rules));
+        }
+        if (cloudSettings.checklist && Array.isArray(cloudSettings.checklist)) {
+          setChecklist(cloudSettings.checklist);
+          localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(cloudSettings.checklist));
+        }
+        if (cloudSettings.dhanCredentials) {
+          setDhanCredentials(cloudSettings.dhanCredentials);
+          localStorage.setItem(DHAN_CREDS_STORAGE_KEY, JSON.stringify(cloudSettings.dhanCredentials));
         }
       }
     });
@@ -421,7 +438,11 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...strat,
       id: 'strat-' + Date.now()
     };
-    setStrategies(prev => [...prev, newStrat]);
+    setStrategies(prev => {
+      const next = [...prev, newStrat];
+      saveCloudSetting('strategies', next);
+      return next;
+    });
   };
 
   const addRule = (rule: Omit<TradingRule, 'id'>) => {
@@ -429,23 +450,43 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...rule,
       id: 'rule-' + Date.now()
     };
-    setRules(prev => [...prev, newRule]);
+    setRules(prev => {
+      const next = [...prev, newRule];
+      saveCloudSetting('rules', next);
+      return next;
+    });
   };
 
   const toggleRule = (id: string) => {
-    setRules(prev => prev.map(r => r.id === id ? { ...r, active: !r.active } : r));
+    setRules(prev => {
+      const next = prev.map(r => r.id === id ? { ...r, active: !r.active } : r);
+      saveCloudSetting('rules', next);
+      return next;
+    });
   };
 
   const deleteRule = (id: string) => {
-    setRules(prev => prev.filter(r => r.id !== id));
+    setRules(prev => {
+      const next = prev.filter(r => r.id !== id);
+      saveCloudSetting('rules', next);
+      return next;
+    });
   };
 
   const toggleChecklist = (id: string) => {
-    setChecklist(prev => prev.map(item => item.id === id ? { ...item, completed: !item.completed } : item));
+    setChecklist(prev => {
+      const next = prev.map(item => item.id === id ? { ...item, completed: !item.completed } : item);
+      saveCloudSetting('checklist', next);
+      return next;
+    });
   };
 
   const resetChecklist = () => {
-    setChecklist(prev => prev.map(item => ({ ...item, completed: false })));
+    setChecklist(prev => {
+      const next = prev.map(item => ({ ...item, completed: false }));
+      saveCloudSetting('checklist', next);
+      return next;
+    });
   };
 
   const exportCsv = () => {
