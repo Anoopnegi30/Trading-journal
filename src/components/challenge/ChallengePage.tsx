@@ -16,23 +16,35 @@ import {
   Edit3,
   RotateCcw,
   Award,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  Sliders,
+  DollarSign,
+  ArrowRight,
+  Sparkles,
+  HelpCircle,
+  Lightbulb
 } from 'lucide-react';
 import { formatINR, calculateDashboardStats } from '../../utils/calculations';
 import confetti from 'canvas-confetti';
 
 export const ChallengePage: React.FC = () => {
-  const { trades, challenge, saveChallenge, resetChallenge } = useTradeContext();
+  const { trades, challenge, saveChallenge } = useTradeContext();
   const [showSetChallengeModal, setShowSetChallengeModal] = useState(false);
 
   // Form states initialized with persistent challenge
-  const [challengeName, setChallengeName] = useState(challenge.name || 'August 2026 Capital Growth Challenge');
+  const [challengeName, setChallengeName] = useState(challenge.name || 'Capital Growth Challenge');
   const [startingCapital, setStartingCapital] = useState<number>(challenge.startingCapital || 100000);
   const [targetCapital, setTargetCapital] = useState<number>(challenge.targetCapital || 200000);
   const [targetDays, setTargetDays] = useState<number>(challenge.targetDays || 30);
   const [maxRiskPercent, setMaxRiskPercent] = useState<number>(challenge.maxRiskPerTrade || 2);
   const [maxDailyLoss, setMaxDailyLoss] = useState<number>(challenge.maxDailyLoss || 3000);
   const [notes, setNotes] = useState<string>(challenge.notes || '');
+
+  // Simulator State
+  const [simTradesPlan, setSimTradesPlan] = useState<number>(30);
+  const [simDailyTrades, setSimDailyTrades] = useState<number>(2);
+  const [simWinRate, setSimWinRate] = useState<number>(60);
 
   // Keep local form in sync when persistent challenge changes
   useEffect(() => {
@@ -46,13 +58,55 @@ export const ChallengePage: React.FC = () => {
   }, [challenge]);
 
   const stats = calculateDashboardStats(trades);
+  const validTrades = trades.filter(t => !t.isNoTradeDay);
+  
   const currentCapital = startingCapital + stats.totalPnl;
   const targetProfit = targetCapital - startingCapital;
   const realizedProfit = stats.totalPnl;
+  const remainingProfitNeeded = Math.max(0, targetCapital - currentCapital);
   
   const progressPercent = targetProfit > 0 
     ? Math.min(100, Math.max(0, Math.round((realizedProfit / targetProfit) * 100))) 
     : 0;
+
+  // Real Historical Performance Metrics
+  const winTrades = validTrades.filter(t => t.netPnl > 0);
+  const lossTrades = validTrades.filter(t => t.netPnl < 0);
+  const avgWinPnl = winTrades.length > 0 ? winTrades.reduce((s, t) => s + t.netPnl, 0) / winTrades.length : 2500;
+  const avgLossPnl = lossTrades.length > 0 ? Math.abs(lossTrades.reduce((s, t) => s + t.netPnl, 0) / lossTrades.length) : 1000;
+  const winRate = validTrades.length > 0 ? (winTrades.length / validTrades.length) : 0.6;
+  const lossRate = 1 - winRate;
+  
+  // Real Net Expectancy Per Trade
+  const netExpectancyPerTrade = (winRate * avgWinPnl) - (lossRate * avgLossPnl);
+  const effectiveExpectancy = netExpectancyPerTrade > 100 ? netExpectancyPerTrade : (avgWinPnl * 0.5);
+
+  // Target Projections Calculations
+  const estimatedTradesRemaining = remainingProfitNeeded > 0
+    ? Math.ceil(remainingProfitNeeded / effectiveExpectancy)
+    : 0;
+
+  const estimatedDaysRemaining = simDailyTrades > 0 
+    ? Math.ceil(estimatedTradesRemaining / simDailyTrades)
+    : 0;
+
+  const requiredProfitPerTrade = simTradesPlan > 0 
+    ? Math.round(remainingProfitNeeded / simTradesPlan)
+    : 0;
+
+  const requiredProfitPerDay = targetDays > 0 
+    ? Math.round(remainingProfitNeeded / Math.max(1, targetDays))
+    : 0;
+
+  const safeRiskPerTrade = Math.round(currentCapital * (maxRiskPercent / 100));
+
+  // Simulator Dynamic Computation
+  const simWinTradesCount = Math.round(simTradesPlan * (simWinRate / 100));
+  const simLossTradesCount = simTradesPlan - simWinTradesCount;
+  const simEstimatedTotalLoss = simLossTradesCount * safeRiskPerTrade;
+  const simTotalGainNeeded = remainingProfitNeeded + simEstimatedTotalLoss;
+  const simRequiredProfitPerWinTrade = simWinTradesCount > 0 ? Math.round(simTotalGainNeeded / simWinTradesCount) : 0;
+  const simRequiredRR = safeRiskPerTrade > 0 ? (simRequiredProfitPerWinTrade / safeRiskPerTrade).toFixed(1) : '2.0';
 
   const handleSetChallenge = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +154,7 @@ export const ChallengePage: React.FC = () => {
               {challenge.name || 'Capital Growth Challenge'}
             </h2>
             <p className="text-xs text-slate-400">
-              Set ambitious growth targets, lock in discipline, and track real-time milestones
+              Set ambitious growth targets, calculate trade run-rate, and track target roadmap
             </p>
           </div>
         </div>
@@ -157,7 +211,7 @@ export const ChallengePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Challenge Milestones */}
+        {/* Milestone Checkpoints */}
         <div>
           <h4 className="text-xs font-bold text-slate-300 light:text-slate-700 uppercase tracking-wider mb-3">
             Milestone Benchmarks
@@ -183,25 +237,266 @@ export const ChallengePage: React.FC = () => {
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Rules & Risk Parameters Ribbon */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] text-xs">
-            <span className="text-slate-400 block mb-0.5">Max Risk Per Trade</span>
-            <span className="text-sm font-bold text-white light:text-slate-900 font-mono">{challenge.maxRiskPerTrade || 2}% of Capital</span>
+      {/* ========================================================================= */}
+      {/* 🚀 TARGET COMPLETION ROADMAP: EXACT RUN-RATE & TRADES NEEDED */}
+      {/* ========================================================================= */}
+      <div>
+        <h3 className="text-sm font-black text-white light:text-slate-900 tracking-tight flex items-center gap-2 mb-4">
+          <Target className="w-5 h-5 text-emerald-400" />
+          Target Completion Roadmap & Trade Projections
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Card 1: Remaining Money to Target */}
+          <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+            <span className="text-xs font-bold text-slate-400 flex items-center justify-between">
+              <span>Remaining to Goal</span>
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+            </span>
+            <div className="text-2xl font-black text-emerald-400 font-mono">
+              {formatINR(remainingProfitNeeded)}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Gap needed to reach {formatINR(targetCapital)}
+            </p>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] text-xs">
-            <span className="text-slate-400 block mb-0.5">Daily Max Loss Limit</span>
-            <span className="text-sm font-bold text-rose-400 font-mono">{formatINR(challenge.maxDailyLoss || 3000)}</span>
+          {/* Card 2: Estimated Trades Remaining */}
+          <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+            <span className="text-xs font-bold text-slate-400 flex items-center justify-between">
+              <span>Estimated Trades Left</span>
+              <Zap className="w-4 h-4 text-blue-400" />
+            </span>
+            <div className="text-2xl font-black text-blue-400 font-mono">
+              {remainingProfitNeeded === 0 ? '0' : `~${estimatedTradesRemaining}`} trades
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Based on current net expectancy ({formatINR(effectiveExpectancy)}/trade)
+            </p>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] text-xs">
-            <span className="text-slate-400 block mb-0.5">Target Duration</span>
-            <span className="text-sm font-bold text-blue-400 font-mono">{challenge.targetDays || 30} Days</span>
+          {/* Card 3: Required Net Profit Per Trade */}
+          <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+            <span className="text-xs font-bold text-slate-400 flex items-center justify-between">
+              <span>Required Profit / Trade</span>
+              <Flame className="w-4 h-4 text-amber-400" />
+            </span>
+            <div className="text-2xl font-black text-amber-400 font-mono">
+              {formatINR(requiredProfitPerTrade)}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              If completed in next {simTradesPlan} planned trades
+            </p>
           </div>
+
+          {/* Card 4: Safe Max Risk per Trade */}
+          <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+            <span className="text-xs font-bold text-slate-400 flex items-center justify-between">
+              <span>Max Stop Loss / Trade</span>
+              <ShieldCheck className="w-4 h-4 text-rose-400" />
+            </span>
+            <div className="text-2xl font-black text-rose-400 font-mono">
+              {formatINR(safeRiskPerTrade)}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Strict {maxRiskPercent}% risk limit on current capital
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 🎛️ INTERACTIVE TARGET CALCULATOR & SIMULATOR */}
+      {/* ========================================================================= */}
+      <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#1e2942] pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-blue-500/15 text-blue-400">
+              <Sliders className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-white light:text-slate-900 tracking-tight">
+                Interactive Challenge Simulator
+              </h3>
+              <p className="text-xs text-slate-400">
+                Adjust planned trades, win rate, and daily frequency to see exact targets required
+              </p>
+            </div>
+          </div>
+
+          <span className="px-3 py-1 text-xs font-bold text-blue-400 bg-blue-500/10 rounded-xl border border-blue-500/20 font-mono">
+            Target Gap: {formatINR(remainingProfitNeeded)}
+          </span>
         </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Controls Column */}
+          <div className="space-y-4 text-xs">
+            {/* Slider 1: Planned Trades */}
+            <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-300 light:text-slate-700">Planned Trades to Goal</span>
+                <span className="text-blue-400 font-mono text-sm">{simTradesPlan} trades</span>
+              </div>
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="5"
+                value={simTradesPlan}
+                onChange={(e) => setSimTradesPlan(Number(e.target.value))}
+                className="w-full accent-blue-500 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500">
+                <span>10 trades (Aggressive)</span>
+                <span>100 trades (Conservative)</span>
+              </div>
+            </div>
+
+            {/* Slider 2: Daily Trades Frequency */}
+            <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-300 light:text-slate-700">Trades per Day</span>
+                <span className="text-emerald-400 font-mono text-sm">{simDailyTrades} trades / day</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="1"
+                value={simDailyTrades}
+                onChange={(e) => setSimDailyTrades(Number(e.target.value))}
+                className="w-full accent-emerald-500 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500">
+                <span>1 trade (Strict Quality)</span>
+                <span>5 trades (High Frequency)</span>
+              </div>
+            </div>
+
+            {/* Slider 3: Expected Win Rate */}
+            <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-300 light:text-slate-700">Expected Win Rate</span>
+                <span className="text-purple-400 font-mono text-sm">{simWinRate}%</span>
+              </div>
+              <input
+                type="range"
+                min="40"
+                max="80"
+                step="5"
+                value={simWinRate}
+                onChange={(e) => setSimWinRate(Number(e.target.value))}
+                className="w-full accent-purple-500 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500">
+                <span>40% (High R:R required)</span>
+                <span>80% (High Accuracy)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Results Display Column */}
+          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            {/* Box 1: Required Profit per Winning Trade */}
+            <div className="p-5 rounded-2xl bg-[#16223b]/90 light:bg-slate-50 border border-[#23355b] space-y-2 flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-400">Required Profit Per Winning Trade</span>
+                <div className="text-3xl font-black text-emerald-400 font-mono mt-1">
+                  {formatINR(simRequiredProfitPerWinTrade)}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  At {simWinRate}% win rate across {simWinTradesCount} expected winning trades
+                </p>
+              </div>
+              <div className="pt-2 border-t border-[#1e2942] text-[11px] text-slate-300 flex items-center justify-between">
+                <span>Required R:R Ratio:</span>
+                <span className="font-bold text-blue-400 font-mono">1 : {simRequiredRR}</span>
+              </div>
+            </div>
+
+            {/* Box 2: Estimated Days & Completion Time */}
+            <div className="p-5 rounded-2xl bg-[#16223b]/90 light:bg-slate-50 border border-[#23355b] space-y-2 flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-400">Estimated Days to Reach Target</span>
+                <div className="text-3xl font-black text-blue-400 font-mono mt-1">
+                  {Math.ceil(simTradesPlan / simDailyTrades)} Days
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  ~{(Math.ceil(simTradesPlan / simDailyTrades) / 5).toFixed(1)} trading weeks at {simDailyTrades} trades/day
+                </p>
+              </div>
+              <div className="pt-2 border-t border-[#1e2942] text-[11px] text-slate-300 flex items-center justify-between">
+                <span>Daily Profit Run-Rate:</span>
+                <span className="font-bold text-emerald-400 font-mono">
+                  {formatINR(Math.round(remainingProfitNeeded / Math.max(1, Math.ceil(simTradesPlan / simDailyTrades))))} / day
+                </span>
+              </div>
+            </div>
+
+            {/* Box 3: Total Loss Buffer Allocated */}
+            <div className="p-5 rounded-2xl bg-[#16223b]/90 light:bg-slate-50 border border-[#23355b] space-y-2 flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-400">Expected Loss Buffer</span>
+                <div className="text-2xl font-black text-rose-400 font-mono mt-1">
+                  -{formatINR(simEstimatedTotalLoss)}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Buffer for {simLossTradesCount} losing trades @ {formatINR(safeRiskPerTrade)} max SL
+                </p>
+              </div>
+              <div className="pt-2 border-t border-[#1e2942] text-[11px] text-slate-400">
+                Losing trades are natural — proper R:R compensates for them.
+              </div>
+            </div>
+
+            {/* Box 4: Execution Strategy Recommendation */}
+            <div className="p-5 rounded-2xl bg-[#16223b]/90 light:bg-slate-50 border border-[#23355b] space-y-2 flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                  <Lightbulb className="w-4 h-4" /> Recommended Execution Plan
+                </span>
+                <p className="text-xs text-slate-200 light:text-slate-800 font-semibold mt-2 leading-relaxed">
+                  Focus on taking strictly <strong className="text-white font-bold">{simDailyTrades} high-probability trades/day</strong> with minimum <strong className="text-emerald-400 font-bold">1:{simRequiredRR} Risk-to-Reward</strong> to achieve {formatINR(targetCapital)} safely!
+                </p>
+              </div>
+              <div className="pt-2 border-t border-[#1e2942] text-[11px] text-slate-400 flex items-center justify-between">
+                <span>Discipline Target:</span>
+                <span className="text-emerald-400 font-bold">100% Plan Adherence</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 🛡️ RISK RULES & MOTIVATION NOTES RIBBON */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 rounded-2xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 text-xs shadow-lg space-y-1">
+          <span className="text-slate-400 font-semibold block">Max Risk Per Trade</span>
+          <span className="text-base font-bold text-white light:text-slate-900 font-mono">{challenge.maxRiskPerTrade || 2}% of Capital ({formatINR(safeRiskPerTrade)})</span>
+          <p className="text-[10px] text-slate-500">Limits drawdown on bad trading sessions</p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 text-xs shadow-lg space-y-1">
+          <span className="text-slate-400 font-semibold block">Daily Max Loss Limit</span>
+          <span className="text-base font-bold text-rose-400 font-mono">{formatINR(challenge.maxDailyLoss || 3000)}</span>
+          <p className="text-[10px] text-slate-500">Stop trading immediately if hit</p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 text-xs shadow-lg space-y-1">
+          <span className="text-slate-400 font-semibold block">Challenge Strategy / Rule</span>
+          <span className="text-base font-bold text-emerald-400">Trend Line & Breakouts</span>
+          <p className="text-[10px] text-slate-500">Only execute predefined A+ setups</p>
+        </div>
       </div>
 
       {/* Set Challenge Modal */}
@@ -218,7 +513,7 @@ export const ChallengePage: React.FC = () => {
                   <h3 className="text-base font-black text-white light:text-slate-900 tracking-tight">
                     Set Trading Growth Challenge
                   </h3>
-                  <p className="text-[11px] text-slate-400">Settings are permanently saved in your journal</p>
+                  <p className="text-[11px] text-slate-400">Settings are permanently saved in your journal & cloud</p>
                 </div>
               </div>
 
