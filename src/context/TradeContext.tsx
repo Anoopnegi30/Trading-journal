@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem, TradingStrategy, UserProfile, TradingChallenge } from '../types/trade';
 import { INITIAL_TRADES, INITIAL_RULES, INITIAL_CHECKLIST, INITIAL_TICKER, INITIAL_STRATEGIES } from '../utils/mockData';
-import { fetchCloudTrades, saveTradeToCloud, syncAllTradesToCloud, deleteTradeFromCloud, syncDhanTrades } from '../utils/cloudSync';
+import { fetchCloudTrades, saveTradeToCloud, syncAllTradesToCloud, deleteTradeFromCloud, syncDhanTrades, fetchCloudSettings, saveCloudSetting } from '../utils/cloudSync';
 import confetti from 'canvas-confetti';
 import Papa from 'papaparse';
 
@@ -236,19 +236,22 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setUserProfile(prev => {
       const next = { ...prev, ...fields };
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(next));
+      saveCloudSetting('userProfile', next);
       return next;
     });
   };
 
-  // Save Challenge handler
+  // Save Challenge handler (Cross-Device Cloud Sync)
   const saveChallenge = (newChallenge: TradingChallenge) => {
     setChallenge(newChallenge);
     localStorage.setItem(CHALLENGE_STORAGE_KEY, JSON.stringify(newChallenge));
+    saveCloudSetting('challenge', newChallenge);
   };
 
   const resetChallenge = () => {
     setChallenge(DEFAULT_CHALLENGE);
     localStorage.setItem(CHALLENGE_STORAGE_KEY, JSON.stringify(DEFAULT_CHALLENGE));
+    saveCloudSetting('challenge', DEFAULT_CHALLENGE);
   };
 
   // Save Dhan Credentials handler
@@ -287,12 +290,25 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return res;
   };
 
-  // Initial cloud fetch on startup
+  // Initial cloud fetch on startup (Laptop <-> Phone sync)
   useEffect(() => {
     fetchCloudTrades().then(cloudTrades => {
       if (cloudTrades && Array.isArray(cloudTrades)) {
         setTrades(cloudTrades);
         setIsCloudSynced(true);
+      }
+    });
+
+    fetchCloudSettings().then(cloudSettings => {
+      if (cloudSettings) {
+        if (cloudSettings.challenge) {
+          setChallenge(cloudSettings.challenge);
+          localStorage.setItem(CHALLENGE_STORAGE_KEY, JSON.stringify(cloudSettings.challenge));
+        }
+        if (cloudSettings.userProfile) {
+          setUserProfile(cloudSettings.userProfile);
+          localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(cloudSettings.userProfile));
+        }
       }
     });
   }, []);

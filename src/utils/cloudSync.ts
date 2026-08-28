@@ -1,4 +1,4 @@
-import { Trade } from '../types/trade';
+import { Trade, TradingChallenge, UserProfile } from '../types/trade';
 
 export async function fetchCloudTrades(): Promise<Trade[] | null> {
   try {
@@ -54,6 +54,34 @@ export async function deleteTradeFromCloud(id: string): Promise<boolean> {
   }
 }
 
+export async function fetchCloudSettings(): Promise<Record<string, any> | null> {
+  try {
+    const res = await fetch('/api/settings');
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.success && data.settings) {
+      return data.settings;
+    }
+  } catch (e) {
+    console.error('Failed to fetch cloud settings:', e);
+  }
+  return null;
+}
+
+export async function saveCloudSetting(key: string, value: any): Promise<boolean> {
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value })
+    });
+    return res.ok;
+  } catch (e) {
+    console.error('Failed to save cloud setting:', e);
+    return false;
+  }
+}
+
 export async function syncDhanTrades(
   clientId: string, 
   accessToken: string
@@ -67,6 +95,6 @@ export async function syncDhanTrades(
     const data = await res.json();
     return data;
   } catch (e: any) {
-    return { success: false, count: 0, error: e.message || 'Network error connecting to DhanHQ API' };
+    return { success: false, count: 0, error: e.message || 'Failed to connect to Dhan API' };
   }
 }

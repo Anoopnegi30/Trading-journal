@@ -310,6 +310,56 @@ export default {
       }
     }
 
+    // ==========================================
+    // Cloud Settings & Challenge Sync Route
+    // ==========================================
+    if (url.pathname === '/api/settings') {
+      if (request.method === 'GET') {
+        try {
+          if (!env.DB) {
+            return new Response(JSON.stringify({ success: true, settings: {} }), {
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            });
+          }
+          const { results } = await env.DB.prepare('SELECT key, value FROM app_settings').all();
+          const settings: Record<string, any> = {};
+          (results || []).forEach((r: any) => {
+            try {
+              settings[r.key] = JSON.parse(r.value);
+            } catch (e) {
+              settings[r.key] = r.value;
+            }
+          });
+          return new Response(JSON.stringify({ success: true, settings }), {
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        } catch (e: any) {
+          return new Response(JSON.stringify({ success: false, error: e.message, settings: {} }), {
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+      }
+
+      if (request.method === 'POST') {
+        try {
+          const body: any = await request.json();
+          const { key, value } = body;
+          if (env.DB && key) {
+            const valStr = typeof value === 'string' ? value : JSON.stringify(value);
+            await env.DB.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)').bind(key, valStr).run();
+          }
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        } catch (e: any) {
+          return new Response(JSON.stringify({ success: false, error: e.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+      }
+    }
+
     // Serve Frontend Static Assets
     return env.ASSETS.fetch(request);
   }
