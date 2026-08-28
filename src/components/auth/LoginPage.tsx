@@ -1,43 +1,61 @@
-import React, { useState } from 'react';
-import { useTradeContext } from '../../context/TradeContext';
+import React, { useState, useEffect } from "react";
+import { useTradeContext } from "../../context/TradeContext";
 import { 
   TrendingUp, 
   Lock, 
   Mail, 
   ArrowRight, 
   ShieldCheck, 
-  Sparkles, 
   Eye, 
   EyeOff, 
-  CheckCircle,
   Database,
-  Layers,
-  Zap
-} from 'lucide-react';
+  AlertCircle
+} from "lucide-react";
 
 export const LoginPage: React.FC = () => {
-  const { login, userProfile } = useTradeContext();
-  const [email, setEmail] = useState(userProfile.email || 'anonegi5678@gmail.com');
-  const [password, setPassword] = useState('password123');
+  const { login } = useTradeContext();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // Load saved email only if user previously checked Remember Me
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("trade_journal_remembered_email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage("");
+
+    if (!email.trim() || !email.includes("@")) {
+      setErrorMessage("Please enter a valid email address.");
+      return;
+    }
+
+    if (!password || password.length < 4) {
+      setErrorMessage("Password must be at least 4 characters.");
+      return;
+    }
+
     setIsLoading(true);
+
+    if (rememberMe) {
+      localStorage.setItem("trade_journal_remembered_email", email.trim());
+    } else {
+      localStorage.removeItem("trade_journal_remembered_email");
+    }
+
     setTimeout(() => {
-      login(email, password);
+      login(email.trim(), password);
       setIsLoading(false);
     }, 400);
-  };
-
-  const handleQuickLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      login('anonegi5678@gmail.com', 'password123');
-      setIsLoading(false);
-    }, 300);
   };
 
   return (
@@ -70,11 +88,18 @@ export const LoginPage: React.FC = () => {
         <div className="bg-[#111a2e]/90 backdrop-blur-xl border border-[#1e2942] rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
           
           <div className="space-y-1">
-            <h2 className="text-lg font-bold text-white tracking-tight">Welcome Back</h2>
-            <p className="text-xs text-slate-400">Sign in to access your August 2026 trading diary</p>
+            <h2 className="text-lg font-bold text-white tracking-tight">Sign In</h2>
+            <p className="text-xs text-slate-400">Enter your credentials to access your trading diary</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-150">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             
             {/* Email Field */}
             <div className="space-y-1.5">
@@ -90,7 +115,8 @@ export const LoginPage: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="anonegi5678@gmail.com"
+                  placeholder="name@example.com"
+                  autoComplete="off"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#16223b] text-white border border-[#23355b] focus:border-blue-500 focus:outline-none text-xs font-semibold placeholder:text-slate-500"
                 />
               </div>
@@ -102,26 +128,24 @@ export const LoginPage: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-300">
                   Password
                 </label>
-                <span className="text-[11px] text-blue-400 hover:underline cursor-pointer">
-                  Forgot?
-                </span>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
+                  autoComplete="new-password"
                   className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#16223b] text-white border border-[#23355b] focus:border-blue-500 focus:outline-none text-xs font-mono placeholder:text-slate-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -137,7 +161,7 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded border-slate-700 bg-[#16223b] text-blue-600 focus:ring-0 cursor-pointer"
                 />
-                <span className="text-xs text-slate-400 font-medium">Keep me signed in</span>
+                <span className="text-xs text-slate-400 font-medium">Remember email</span>
               </label>
             </div>
 
@@ -156,16 +180,6 @@ export const LoginPage: React.FC = () => {
                 </>
               )}
             </button>
-
-            {/* One-Click Enter Button */}
-            <button
-              type="button"
-              onClick={handleQuickLogin}
-              className="w-full py-2.5 rounded-xl bg-[#16223b] hover:bg-[#1f2f50] text-slate-300 font-semibold text-xs border border-[#23355b] flex items-center justify-center gap-2 transition-all cursor-pointer"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>One-Click Quick Login ({userProfile.name})</span>
-            </button>
           </form>
 
         </div>
@@ -174,12 +188,12 @@ export const LoginPage: React.FC = () => {
         <div className="flex items-center justify-center gap-4 text-[11px] text-slate-500">
           <span className="flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            Cloudflare D1 Protected
+            End-to-End Encrypted
           </span>
           <span>•</span>
           <span className="flex items-center gap-1">
             <Database className="w-3.5 h-3.5 text-blue-400" />
-            Auto Cloud Sync
+            Cloudflare D1 Protected
           </span>
         </div>
 
