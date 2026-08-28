@@ -94,8 +94,20 @@ export default {
           // For Option Buyer: Profit = (Sell - Buy) * Qty
           const isOptionBuying = sym.toUpperCase().includes('CE') || sym.toUpperCase().includes('PE') || group.buys.length > 0;
           const entryPrice = isOptionBuying ? avgBuyPrice : (avgSellPrice || avgBuyPrice);
-          const exitPrice = isOptionBuying ? avgSellPrice : avgBuyPrice;
-          const fees = Math.round((group.buys.length + group.sells.length) * 20); // standard ~₹20/order
+          // Exact Indian F&O Brokerage & Government Taxes:
+          // Brokerage: ₹20/order (Buy: ₹20 + Sell: ₹20 = ₹40)
+          // STT: 0.0625% on sell premium turnover
+          // Exchange Turnover (NSE): 0.03503%
+          // GST: 18% on (Brokerage + Exchange)
+          // Stamp Duty: 0.003% on Buy side + SEBI turnover
+          const numOrders = (group.buys.length || 1) + (group.sells.length || 1);
+          const brokerage = numOrders * 20;
+          const stt = totalSellValue * 0.000625;
+          const exchangeCharges = (totalBuyValue + totalSellValue) * 0.0003503;
+          const gst = (brokerage + exchangeCharges) * 0.18;
+          const stampDuty = totalBuyValue * 0.00003;
+          const sebiCharges = (totalBuyValue + totalSellValue) * 0.000001;
+          const fees = Number((brokerage + stt + exchangeCharges + gst + stampDuty + sebiCharges).toFixed(2)) || 55.0;
           const grossPnl = entryPrice > 0 && exitPrice > 0 ? (exitPrice - entryPrice) * matchedQty : 0;
           const netPnl = Number((grossPnl - fees).toFixed(2));
 

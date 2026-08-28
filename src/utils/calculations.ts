@@ -182,3 +182,53 @@ export function formatINR(val: number): string {
   }).format(absVal);
   return `${isNeg ? '-' : ''}₹${formatted}`;
 }
+
+export interface IndianChargesBreakdown {
+  brokerage: number;
+  stt: number;
+  exchangeCharges: number;
+  gst: number;
+  sebiCharges: number;
+  stampDuty: number;
+  totalCharges: number;
+}
+
+export function calculateIndianOptionCharges(
+  buyPrice: number,
+  sellPrice: number,
+  quantity: number
+): IndianChargesBreakdown {
+  const buyValue = buyPrice * quantity;
+  const sellValue = sellPrice * quantity;
+  const totalTurnover = buyValue + sellValue;
+
+  // Brokerage: ₹20 per executed order (Buy = ₹20, Sell = ₹20 => ₹40 total)
+  const brokerage = 40.0;
+
+  // STT / CTT: 0.0625% on option sell premium turnover
+  const stt = Number((sellValue * 0.000625).toFixed(2));
+
+  // Exchange Transaction Charge (NSE F&O: 0.03503% on premium turnover)
+  const exchangeCharges = Number((totalTurnover * 0.0003503).toFixed(2));
+
+  // SEBI Turnover Charge: ₹10 / Crore
+  const sebiCharges = Number((totalTurnover * 0.000001).toFixed(2));
+
+  // Stamp Duty: 0.003% on Buy Value
+  const stampDuty = Number((buyValue * 0.00003).toFixed(2));
+
+  // GST: 18% on (Brokerage + Exchange Charges + SEBI)
+  const gst = Number(((brokerage + exchangeCharges + sebiCharges) * 0.18).toFixed(2));
+
+  const totalCharges = Number((brokerage + stt + exchangeCharges + sebiCharges + stampDuty + gst).toFixed(2));
+
+  return {
+    brokerage,
+    stt,
+    exchangeCharges,
+    gst,
+    sebiCharges,
+    stampDuty,
+    totalCharges: totalCharges > 0 ? totalCharges : 55.0
+  };
+}

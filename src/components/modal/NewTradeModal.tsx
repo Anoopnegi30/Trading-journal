@@ -43,7 +43,7 @@ export const NewTradeModal: React.FC = () => {
   const [entryPrice, setEntryPrice] = useState<number | ''>(110);
   const [exitPrice, setExitPrice] = useState<number | ''>(120);
   const [quantity, setQuantity] = useState<number | ''>(65);
-  const [fees, setFees] = useState<number | ''>(20);
+  const [fees, setFees] = useState<number | ''>(55);
   const [stopLoss, setStopLoss] = useState<number | ''>('');
   const [target, setTarget] = useState<number | ''>('');
   const [strategy, setStrategy] = useState('Breakout');
@@ -517,15 +517,16 @@ export const NewTradeModal: React.FC = () => {
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
-                    Fees (₹) <span className="text-rose-500">*</span>
+                    Brokerage & Taxes (₹) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="number"
-                    placeholder="Fees & charges"
+                    placeholder="e.g. 55"
                     value={fees}
                     onChange={(e) => setFees(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3 py-2 text-slate-200 light:text-slate-900 font-mono focus:outline-none"
                   />
+                  <p className="text-[9px] text-slate-400 mt-0.5">₹40 Brokerage + STT/GST/NSE</p>
                 </div>
 
                 <div>
