@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem, TradingStrategy, UserProfile } from '../types/trade';
 import { INITIAL_TRADES, INITIAL_RULES, INITIAL_CHECKLIST, INITIAL_TICKER, INITIAL_STRATEGIES } from '../utils/mockData';
-import { fetchCloudTrades, saveTradeToCloud, syncAllTradesToCloud, deleteTradeFromCloud } from '../utils/cloudSync';
+import { fetchCloudTrades, saveTradeToCloud, syncAllTradesToCloud, deleteTradeFromCloud, syncDhanTrades } from '../utils/cloudSync';
 import confetti from 'canvas-confetti';
 import Papa from 'papaparse';
 
@@ -27,6 +27,11 @@ interface TradeContextType {
   // Profile state
   userProfile: UserProfile;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
+
+  // Dhan Integration state
+  dhanCredentials: { clientId: string; accessToken: string } | null;
+  saveDhanCredentials: (clientId: string, accessToken: string) => void;
+  syncFromDhan: (clientId?: string, accessToken?: string) => Promise<{ success: boolean; count: number; error?: string; message?: string }>;
 
   trades: Trade[];
   addTrade: (trade: Omit<Trade, 'id' | 'createdAt'>) => void;
@@ -82,6 +87,7 @@ const STRATEGIES_STORAGE_KEY = 'trade_diary_strategies_v4';
 const CHECKLIST_STORAGE_KEY = 'trade_diary_checklist_v4';
 const AUTH_STORAGE_KEY = 'trade_diary_auth_v4';
 const PROFILE_STORAGE_KEY = 'trade_diary_profile_v4';
+const DHAN_CREDS_STORAGE_KEY = 'trade_diary_dhan_creds_v4';
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Anoop Negi',
@@ -104,6 +110,15 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try { return JSON.parse(saved); } catch (e) {}
     }
     return DEFAULT_PROFILE;
+  });
+
+  // Dhan Credentials state
+  const [dhanCredentials, setDhanCredentials] = useState<{ clientId: string; accessToken: string } | null>(() => {
+    const saved = localStorage.getItem(DHAN_CREDS_STORAGE_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return null;
   });
 
   // Theme state
@@ -185,6 +200,43 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(next));
       return next;
     });
+  };
+
+  // Save Dhan Credentials handler
+  const saveDhanCredentials = (clientId: string, accessToken: string) => {
+    const creds = { clientId: clientId.trim(), accessToken: accessToken.trim() };
+    setDhanCredentials(creds);
+    localStorage.setItem(DHAN_CREDS_STORAGE_KEY, JSON.stringify(creds));
+  };
+
+  // Sync from DhanHQ API
+  const syncFromDhan = async (clientIdParam?: string, accessTokenParam?: string) => {
+    const cId = clientIdParam || dhanCredentials?.clientId;
+    const aToken = accessTokenParam || dhanCredentials?.accessToken;
+
+    if (!cId || !aToken) {
+      return { success: false, count: 0, error: 'Dhan credentials not found. Please connect your Dhan account first.' };
+    }
+
+    const res = await syncDhanTrades(cId, aToken);
+    if (res.success && res.trades && res.trades.length > 0) {
+      // Merge unique trades
+      setTrades(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const newTrades = res.trades!.filter(t => !existingIds.has(t.id));
+        return [...newTrades, ...prev];
+      });
+
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch (e) {}
+    }
+
+    return res;
   };
 
   // Initial cloud fetch on startup
@@ -435,6 +487,9 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         logout,
         userProfile,
         updateUserProfile,
+        dhanCredentials,
+        saveDhanCredentials,
+        syncFromDhan,
         trades,
         addTrade,
         updateTrade,

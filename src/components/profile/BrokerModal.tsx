@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, RefreshCw, ShieldCheck, ExternalLink, HelpCircle, Key, UserCheck } from 'lucide-react';
+import { X, CheckCircle2, RefreshCw, ShieldCheck, ExternalLink, Key, AlertTriangle } from 'lucide-react';
 import { useTradeContext } from '../../context/TradeContext';
 
 interface BrokerModalProps {
@@ -17,13 +17,17 @@ interface Broker {
 }
 
 export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => {
-  const { addTrade } = useTradeContext();
+  const { dhanCredentials, saveDhanCredentials, syncFromDhan } = useTradeContext();
   const [selectedBroker, setSelectedBroker] = useState<Broker | null>(null);
-  const [clientId, setClientId] = useState('');
-  const [accessToken, setAccessToken] = useState('');
+  const [clientId, setClientId] = useState(dhanCredentials?.clientId || '');
+  const [accessToken, setAccessToken] = useState(dhanCredentials?.accessToken || '');
   const [isSyncing, setIsSyncing] = useState(false);
-  const [connectedBrokers, setConnectedBrokers] = useState<string[]>([]);
+  const [connectedBrokers, setConnectedBrokers] = useState<string[]>(() => {
+    return dhanCredentials ? ['dhan'] : [];
+  });
   const [syncSuccess, setSyncSuccess] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+  const [syncError, setSyncError] = useState('');
 
   if (!isOpen) return null;
 
@@ -31,7 +35,7 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
     {
       id: 'dhan',
       name: 'Dhan',
-      tagline: 'Trade like a Super Trader! (DhanHQ API)',
+      tagline: 'DhanHQ Real-time Trade Book API',
       category: 'Indian',
       iconBg: 'bg-emerald-600',
       iconText: 'ध'
@@ -86,21 +90,42 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
     }
   ];
 
-  const handleConnectAndSync = (e: React.FormEvent) => {
+  const handleConnectAndSync = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBroker) return;
 
     setIsSyncing(true);
-    setTimeout(() => {
-      setIsSyncing(false);
-      setConnectedBrokers(prev => [...new Set([...prev, selectedBroker.id])]);
-      setSyncSuccess(true);
+    setSyncError('');
 
+    if (selectedBroker.id === 'dhan') {
+      saveDhanCredentials(clientId, accessToken);
+      const res = await syncFromDhan(clientId, accessToken);
+      setIsSyncing(false);
+
+      if (res.success) {
+        setConnectedBrokers(prev => [...new Set([...prev, 'dhan'])]);
+        setSyncSuccess(true);
+        setSyncMessage(res.count > 0 ? `🎉 ${res.count} live trades imported from Dhan into Journal!` : '✅ Dhan Connected! (No trades taken today yet)');
+        setTimeout(() => {
+          setSyncSuccess(false);
+          setSelectedBroker(null);
+          onClose();
+        }, 2200);
+      } else {
+        setSyncError(res.error || 'Failed to authenticate with DhanHQ. Please check your Client ID and Access Token.');
+      }
+    } else {
       setTimeout(() => {
-        setSyncSuccess(false);
-        setSelectedBroker(null);
-      }, 1500);
-    }, 1200);
+        setIsSyncing(false);
+        setConnectedBrokers(prev => [...new Set([...prev, selectedBroker.id])]);
+        setSyncSuccess(true);
+        setSyncMessage('Broker connected successfully!');
+        setTimeout(() => {
+          setSyncSuccess(false);
+          setSelectedBroker(null);
+        }, 1500);
+      }, 1000);
+    }
   };
 
   return (
@@ -138,7 +163,10 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
                 return (
                   <div
                     key={b.id}
-                    onClick={() => setSelectedBroker(b)}
+                    onClick={() => {
+                      setSelectedBroker(b);
+                      setSyncError('');
+                    }}
                     className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
                       isConnected
                         ? 'bg-emerald-950/20 border-emerald-500/40 hover:border-emerald-400'
@@ -158,8 +186,8 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
                     </div>
 
                     {isConnected ? (
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Synced
+                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Connected
                       </span>
                     ) : (
                       <span className="text-xs text-slate-500 group-hover:text-blue-400 font-bold">
@@ -225,8 +253,8 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
               {syncSuccess ? (
                 <div className="p-6 text-center space-y-2">
                   <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto animate-bounce" />
-                  <h4 className="text-base font-bold text-white light:text-slate-900">{selectedBroker.name} Connected!</h4>
-                  <p className="text-xs text-slate-400">Account verified. Your trades will auto-sync.</p>
+                  <h4 className="text-base font-bold text-white light:text-slate-900">{syncMessage}</h4>
+                  <p className="text-xs text-slate-400">Your journal has been updated with Dhan trade executions.</p>
                 </div>
               ) : (
                 <form onSubmit={handleConnectAndSync} className="space-y-4 text-xs">
@@ -251,19 +279,26 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
                         <li>Login to <strong>web.dhan.co</strong> & click your <strong>Profile Icon</strong></li>
                         <li>Select <strong>DhanHQ Trading APIs / Access Token</strong></li>
                         <li>Click <strong>"Generate Access Token"</strong> (Valid for 30 Days)</li>
-                        <li>Copy your <strong>Client ID</strong> and <strong>Access Token</strong> below:</li>
+                        <li>Paste your <strong>Client ID</strong> and <strong>Access Token</strong> below:</li>
                       </ol>
+                    </div>
+                  )}
+
+                  {syncError && (
+                    <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{syncError}</span>
                     </div>
                   )}
 
                   <div>
                     <label className="block text-slate-300 light:text-slate-700 font-bold mb-1">
-                      {selectedBroker.id === 'dhan' ? 'Dhan Client ID / User ID' : 'API Key / Client ID'} <span className="text-rose-500">*</span>
+                      {selectedBroker.id === 'dhan' ? 'Dhan Client ID (10-digit ID)' : 'API Key / Client ID'} <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder={selectedBroker.id === 'dhan' ? "e.g. 1000000001 (10-digit ID)" : "Enter API Key"}
+                      placeholder={selectedBroker.id === 'dhan' ? "e.g. 1000000001" : "Enter API Key"}
                       value={clientId}
                       onChange={(e) => setClientId(e.target.value)}
                       className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3.5 py-2.5 text-white light:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
@@ -300,10 +335,10 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
                     <button
                       type="submit"
                       disabled={isSyncing}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-600/25 cursor-pointer"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-50"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                      {isSyncing ? 'Connecting to Dhan...' : 'Connect & Sync Dhan'}
+                      {isSyncing ? 'Connecting & Syncing...' : 'Connect & Fetch Dhan Trades'}
                     </button>
                   </div>
                 </form>

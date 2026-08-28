@@ -53,3 +53,20 @@ export async function deleteTradeFromCloud(id: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function syncDhanTrades(
+  clientId: string, 
+  accessToken: string
+): Promise<{ success: boolean; count: number; trades?: Trade[]; error?: string; message?: string }> {
+  try {
+    const res = await fetch('/api/dhan-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId, accessToken })
+    });
+    const data = await res.json();
+    return data;
+  } catch (e: any) {
+    return { success: false, count: 0, error: e.message || 'Network error connecting to DhanHQ API' };
+  }
+}
