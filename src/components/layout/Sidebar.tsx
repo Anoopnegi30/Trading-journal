@@ -12,12 +12,11 @@ import {
   Scale,
   Calendar,
   Trophy,
-  Users,
   Plus
 } from 'lucide-react';
 
 interface NavItem {
-  id: NavTab | 'community' | 'challenge';
+  id: NavTab;
   label: string;
   icon: React.ElementType;
   badge?: string;
@@ -37,7 +36,6 @@ export const Sidebar: React.FC = () => {
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'risk-management', label: 'Risk Management', icon: Scale },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'community', label: 'Community', icon: Users, badge: 'New' },
     { id: 'challenge', label: 'Challenge', icon: Trophy }
   ];
 
@@ -78,16 +76,10 @@ export const Sidebar: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => {
-                if (item.id === 'community' || item.id === 'challenge') {
-                  setActiveTab('dashboard');
-                } else {
-                  setActiveTab(item.id as NavTab);
-                }
-              }}
+              onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-inner'
+                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-inner font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-[#131d35]/60'
               }`}
             >
