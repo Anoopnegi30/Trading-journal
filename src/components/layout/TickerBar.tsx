@@ -77,17 +77,22 @@ export const TickerBar: React.FC = () => {
 
           {/* Theme Toggle Button */}
           <button
+            type="button"
             onClick={toggleTheme}
-            className="relative flex items-center bg-[#131d35] light:bg-slate-200 p-1 rounded-full border border-[#23355b] light:border-slate-300 transition-all"
+            className={`relative w-14 h-7 flex items-center p-1 rounded-full border transition-all cursor-pointer shadow-inner ${
+              theme === 'dark' 
+                ? 'bg-[#131d35] border-[#23355b]' 
+                : 'bg-slate-200 border-slate-300'
+            }`}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
           >
-            <div className="flex items-center gap-1 px-1">
+            <div className="w-full flex items-center justify-between px-1 pointer-events-none text-xs">
               <Moon className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-blue-400' : 'text-slate-400'}`} />
-              <Sun className={`w-3.5 h-3.5 ${theme === 'light' ? 'text-amber-500' : 'text-slate-500'}`} />
+              <Sun className={`w-3.5 h-3.5 ${theme === 'light' ? 'text-amber-500' : 'text-slate-400'}`} />
             </div>
             <div
-              className={`absolute top-0.5 w-4 h-4 rounded-full bg-blue-500 shadow-md transform transition-transform duration-200 ease-in-out ${
-                theme === 'dark' ? 'left-0.5' : 'left-5'
+              className={`absolute top-1 w-5 h-5 rounded-full bg-blue-500 shadow-md transform transition-transform duration-200 ease-in-out pointer-events-none ${
+                theme === 'dark' ? 'left-1' : 'left-7'
               }`}
             />
           </button>

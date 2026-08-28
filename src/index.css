@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+@custom-variant light (&:where(.light, .light *));
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --bg-main: #0a0f1d;
@@ -14,7 +17,9 @@
     --accent-rose: #f43f5e;
   }
 
-  .light {
+  html.light,
+  body.light,
+  [data-theme="light"] {
     --bg-main: #f1f5f9;
     --bg-card: #ffffff;
     --bg-card-hover: #f8fafc;
@@ -34,7 +39,143 @@
     overflow-x: hidden;
     margin: 0;
     padding: 0;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
+}
+
+/* ==========================================================================
+   LIGHT THEME COMPLETE ADAPTIVE STYLES
+   ========================================================================== */
+
+html.light body {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Main background wrappers */
+html.light .bg-\[\#0a0f1d\],
+html.light .bg-\[\#0a101f\] {
+  background-color: #f8fafc !important;
+}
+
+/* Primary card containers */
+html.light .bg-\[\#111a2e\] {
+  background-color: #ffffff !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Secondary cards and inner containers */
+html.light .bg-\[\#16223b\] {
+  background-color: #f8fafc !important;
+}
+
+html.light .bg-\[\#0d1527\] {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .bg-\[\#131d35\] {
+  background-color: #e2e8f0 !important;
+}
+
+html.light .bg-\[\#18233c\] {
+  background-color: #e2e8f0 !important;
+}
+
+/* Borders */
+html.light .border-\[\#1e2942\],
+html.light .border-\[\#23355b\],
+html.light .border-\[\#1e2d4d\],
+html.light .border-\[\#223558\],
+html.light .border-\[\#18243e\] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Typography Overrides */
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Sidebar and Header */
+html.light aside {
+  background-color: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+}
+
+html.light header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+/* Form Elements */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #3b82f6 !important;
+  background-color: #ffffff !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Accent Colors */
+html.light .text-emerald-400 {
+  color: #059669 !important;
+}
+
+html.light .text-rose-400 {
+  color: #e11d48 !important;
+}
+
+html.light .text-blue-400 {
+  color: #2563eb !important;
+}
+
+html.light .text-amber-400 {
+  color: #d97706 !important;
+}
+
+html.light .text-purple-400 {
+  color: #7c3aed !important;
+}
+
+/* Keep action buttons vibrant with white text */
+html.light .bg-blue-600,
+html.light .bg-gradient-to-r.from-blue-600,
+html.light .bg-emerald-600,
+html.light .bg-rose-600 {
+  color: #ffffff !important;
+}
+
+html.light .bg-blue-600 .text-white,
+html.light button.bg-blue-600,
+html.light button.bg-blue-600 * {
+  color: #ffffff !important;
 }
 
 /* Custom Scrollbars */
@@ -53,6 +194,13 @@
   background: #475569;
 }
 
+html.light ::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.8);
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
 /* Glassmorphism utility */
 .glass-panel {
   background: rgba(17, 26, 46, 0.75);
@@ -61,7 +209,7 @@
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.light .glass-panel {
+html.light .glass-panel {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -77,18 +225,4 @@
 
 .glow-rose {
   box-shadow: 0 0 20px -5px rgba(244, 63, 94, 0.35);
-}
-
-/* Animation for pulse and ticker */
-@keyframes ticker {
-  0% { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(-50%, 0, 0); }
-}
-
-.animate-ticker {
-  animation: ticker 35s linear infinite;
-}
-
-.animate-ticker:hover {
-  animation-play-state: paused;
 }
