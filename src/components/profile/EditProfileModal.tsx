@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTradeContext } from '../../context/TradeContext';
-import { User, Mail, DollarSign, Sparkles, X, Check, Shield, Briefcase, Phone, FileText } from 'lucide-react';
+import { User, Mail, DollarSign, Sparkles, X, Check, Shield, Briefcase, Phone, FileText, Receipt } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -14,6 +14,7 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [email, setEmail] = useState(userProfile.email);
   const [tradingStyle, setTradingStyle] = useState(userProfile.tradingStyle);
   const [initialCapital, setInitialCapital] = useState(userProfile.initialCapital);
+  const [defaultFee, setDefaultFee] = useState(userProfile.defaultFee || 55);
   const [phone, setPhone] = useState(userProfile.phone || '');
   const [bio, setBio] = useState(userProfile.bio || '');
 
@@ -26,6 +27,7 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose }) => {
       email: email.trim() || 'anonegi5678@gmail.com',
       tradingStyle,
       initialCapital: Number(initialCapital) || 100000,
+      defaultFee: Number(defaultFee) || 55,
       phone,
       bio
     });
@@ -46,9 +48,9 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h3 className="text-base font-black text-white light:text-slate-900 tracking-tight">
-                Edit Trader Profile
+                Edit Trader Profile & Settings
               </h3>
-              <p className="text-[11px] text-slate-400">Update personal details, trading style and capital</p>
+              <p className="text-[11px] text-slate-400">Update personal details, trading style, capital & default fees</p>
             </div>
           </div>
 
@@ -106,7 +108,7 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-300 light:text-slate-700 mb-1">
                 Primary Trading Style
@@ -133,6 +135,19 @@ export const EditProfileModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 value={initialCapital}
                 onChange={(e) => setInitialCapital(Number(e.target.value))}
                 placeholder="100000"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#16223b] light:bg-slate-100 text-white light:text-slate-900 border border-[#23355b] focus:border-blue-500 focus:outline-none text-xs font-mono font-semibold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 light:text-slate-700 mb-1">
+                Default Charges / Trade (₹)
+              </label>
+              <input
+                type="number"
+                value={defaultFee}
+                onChange={(e) => setDefaultFee(Number(e.target.value))}
+                placeholder="55"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#16223b] light:bg-slate-100 text-white light:text-slate-900 border border-[#23355b] focus:border-blue-500 focus:outline-none text-xs font-mono font-semibold"
               />
             </div>

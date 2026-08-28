@@ -10,6 +10,7 @@ export interface UserProfile {
   email: string;
   tradingStyle: string;
   initialCapital: number;
+  defaultFee?: number;
   phone?: string;
   bio?: string;
 }
