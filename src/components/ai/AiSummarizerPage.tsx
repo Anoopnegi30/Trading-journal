@@ -11,7 +11,9 @@ import {
   CheckCircle2, 
   XCircle, 
   ListChecks,
-  RefreshCw
+  RefreshCw,
+  Zap,
+  HeartPulse
 } from 'lucide-react';
 
 export const AiSummarizerPage: React.FC = () => {
@@ -28,7 +30,7 @@ export const AiSummarizerPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header matching screenshot 3 */}
+      {/* Header */}
       <div>
         <h2 className="text-xl font-black text-white light:text-slate-900 tracking-tight">
           AI Trading Analysis
@@ -119,7 +121,7 @@ export const AiSummarizerPage: React.FC = () => {
         </div>
       )}
 
-      {/* AI Generated Sections matching screenshots 4 & 5 */}
+      {/* AI Generated Report Sections matching screenshots 2, 4, 5 */}
       {!isAnalyzing && (
         <div className="space-y-5">
           
@@ -145,7 +147,7 @@ export const AiSummarizerPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 2: STRENGTHS matching screenshot 4 & 5 */}
+          {/* Section 2: STRENGTHS matching screenshot 5 */}
           <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
             <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs tracking-wider uppercase">
               <Trophy className="w-4 h-4" /> 2. STRENGTHS
@@ -219,22 +221,64 @@ export const AiSummarizerPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 4: ACTIONS matching screenshot 4 */}
+          {/* Section 4: ACTIONS with priority badges matching screenshot 2 */}
           <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
-            <div className="flex items-center gap-2 text-blue-400 font-bold text-xs tracking-wider uppercase">
-              <ListChecks className="w-4 h-4" /> 4. ACTIONS
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-blue-400 font-bold text-xs tracking-wider uppercase">
+                <ListChecks className="w-4 h-4" /> 4. ACTIONS
+              </div>
+              <span className="text-xs font-bold text-slate-400">+ 10 &gt;</span>
             </div>
 
-            <div className="space-y-2.5">
-              <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] text-xs text-slate-300 light:text-slate-800 leading-relaxed">
-                • <strong>Pause Pullback Trades:</strong> Focus exclusively on high-probability morning Breakout setups where your win rate is 88.9%.
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    HIGH PRIORITY
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 light:text-slate-800 leading-relaxed">
+                  First, stop using the pullback strategy completely until you can study why it failed and find a better entry method for those setups.
+                </p>
               </div>
-              <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] text-xs text-slate-300 light:text-slate-800 leading-relaxed">
-                • <strong>Mechanical Trailing SL:</strong> Stop manual early exits by setting strict trailing stop loss on the 9 EMA.
+
+              <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    CRITICAL
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 light:text-slate-800 leading-relaxed">
+                  Second, start setting a clear target price for every trade before you enter, so you have a plan for taking profits and can track your target achievement.
+                </p>
               </div>
-              <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] text-xs text-slate-300 light:text-slate-800 leading-relaxed">
-                • <strong>Pre-Define Targets:</strong> Always input a 1:2 or 1:3 profit target before confirming orders in terminal.
+
+              <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+                <p className="text-xs text-slate-300 light:text-slate-800 leading-relaxed">
+                  Third, review your "Exited Too Early" mistake: note down the exact reason you left the trade early and create a rule to hold until your stop-loss or target is hit.
+                </p>
               </div>
+
+              <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+                <p className="text-xs text-slate-300 light:text-slate-800 leading-relaxed">
+                  Fourth, work on increasing your capital efficiency by taking more high-probability trades each week, but only when your setup is perfect, not just to be active.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: PSYCHOLOGY matching screenshot 2 */}
+          <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center gap-2 text-purple-400 font-bold text-xs tracking-wider uppercase">
+              <HeartPulse className="w-4 h-4" /> 5. PSYCHOLOGY
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b]">
+              <p className="text-xs text-slate-300 light:text-slate-800 leading-relaxed">
+                Your emotional state is very healthy, with <strong>"Calm"</strong> being your dominant emotion and giving you the best results. However, your confidence score of <strong className="text-blue-400">7.4/10</strong> is good but not perfect, and you had 3 trades with <strong>"Unknown"</strong> emotion that still made good profits, which suggests you may be trading on autopilot.
+              </p>
             </div>
           </div>
 
