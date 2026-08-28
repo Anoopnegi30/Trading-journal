@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
 import { useTradeContext } from '../../context/TradeContext';
-import { getMistakesBreakdown, formatINR } from '../../utils/calculations';
 import { 
   AlertTriangle, 
-  TrendingDown, 
-  TrendingUp, 
+  HelpCircle, 
   Flame, 
+  TrendingDown, 
+  CheckCircle, 
   Calendar,
-  XCircle,
-  Clock,
-  Sparkles,
-  ChevronRight
+  Sparkles
 } from 'lucide-react';
+import { formatINR, getMistakesBreakdown } from '../../utils/calculations';
 import {
   BarChart,
   Bar,
@@ -25,146 +23,80 @@ import {
 
 export const MistakesPage: React.FC = () => {
   const { trades } = useTradeContext();
-  const [timePeriod, setTimePeriod] = useState<'This Month' | 'All Time'>('This Month');
+  const [timePeriod, setTimePeriod] = useState<'August 2026' | 'All Time'>('August 2026');
 
-  // KPI cards data matching screenshot 1
-  const totalMistakesCount = 94;
-  const mostCommonMistake = 'FOMO Entry';
-  const mostCommonOccurrences = 18;
-  const improvementRate = '0%';
-
-  // Mistake distribution bar chart data matching screenshot 1
-  const mistakeDistributionData = [
-    { name: 'FOMO Entry', count: 2 },
-    { name: 'Exited Too Early', count: 1 },
-    { name: 'greed', count: 1 },
-    { name: 'No Clear Plan', count: 1 }
-  ];
-
-  // Frequency Heatmap grid (weeks x days) matching screenshot 1
-  // 5 weeks x 7 days
-  const heatmapData = [
-    [0, 0, 1, 0, 2, 0, 0],
-    [0, 1, 0, 0, 1, 0, 0],
-    [1, 0, 0, 3, 0, 0, 0],
-    [0, 2, 0, 0, 1, 0, 0],
-    [0, 0, 1, 0, 2, 0, 0]
-  ];
-
-  const getHeatmapColor = (val: number) => {
-    if (val === 0) return 'bg-[#152038] border-[#1e2942]';
-    if (val === 1) return 'bg-blue-900/60 border-blue-700/50';
-    if (val === 2) return 'bg-blue-600 border-blue-400';
-    return 'bg-blue-400 border-white';
-  };
+  // Dynamic calculations from trades
+  const mistakeList = getMistakesBreakdown(trades);
+  const totalMistakesCount = mistakeList.reduce((sum, m) => sum + m.tradeCount, 0);
+  const totalLossFromMistakes = mistakeList.reduce((sum, m) => sum + m.totalLoss, 0);
+  const mostCommon = mistakeList.length > 0 ? mistakeList[0].name : 'None';
 
   return (
     <div className="space-y-6">
-      {/* Top 3 KPI Cards matching screenshot 1 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        
-        {/* Card 1: TOTAL MISTAKES */}
-        <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl flex items-start justify-between relative overflow-hidden">
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              TOTAL MISTAKES
-            </span>
-            <h3 className="text-3xl font-black text-white light:text-slate-900">
-              {totalMistakesCount}
-            </h3>
-            <p className="text-xs font-semibold text-rose-400 flex items-center gap-1 pt-1">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>↑ 0%</span>
-              <span className="text-slate-400 font-normal">This week</span>
-            </p>
-          </div>
-
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
-            <XCircle className="w-6 h-6" />
-          </div>
-
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-500/30">
-            <div className="bg-rose-500 h-full w-1/4" />
-          </div>
-        </div>
-
-        {/* Card 2: MOST COMMON */}
-        <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl flex items-start justify-between relative overflow-hidden">
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              MOST COMMON
-            </span>
-            <h3 className="text-xl font-black text-white light:text-slate-900 truncate max-w-[180px]">
-              {mostCommonMistake}
-            </h3>
-            <p className="text-xs font-semibold text-amber-400 pt-1">
-              <span className="font-black text-amber-300">{mostCommonOccurrences}</span> Occurrences
-            </p>
-          </div>
-
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#111a2e] light:bg-white p-5 rounded-3xl border border-[#1e2942] light:border-slate-200 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
             <AlertTriangle className="w-6 h-6" />
           </div>
-
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-amber-500/30">
-            <div className="bg-amber-400 h-full w-2/5" />
-          </div>
-        </div>
-
-        {/* Card 3: IMPROVEMENT */}
-        <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl flex items-start justify-between relative overflow-hidden">
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              IMPROVEMENT
-            </span>
-            <h3 className="text-3xl font-black text-emerald-400">
-              {improvementRate}
-            </h3>
-            <p className="text-xs font-semibold text-slate-400 pt-1">
-              0% vs. last week
+          <div>
+            <h2 className="text-xl font-black text-white light:text-slate-900 tracking-tight flex items-center gap-2">
+              Mistakes Tracker & Analytics
+            </h2>
+            <p className="text-xs text-slate-400">
+              Eliminate recurring psychological leaks like FOMO, early exit, and revenge trading
             </p>
           </div>
-
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <TrendingUp className="w-6 h-6" />
-          </div>
         </div>
-
       </div>
 
-      {/* Grid: Mistake Distribution + Frequency Heatmap matching screenshot 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        
-        {/* Left 2 Cols: Mistake Distribution Bar Chart */}
-        <div className="lg:col-span-2 p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-black text-white light:text-slate-900">
-              Mistake Distribution
-            </h3>
-
-            <div className="flex items-center bg-[#16223b] light:bg-slate-100 p-1 rounded-xl border border-[#23355b]">
-              {(['This Month', 'All Time'] as const).map(period => (
-                <button
-                  key={period}
-                  onClick={() => setTimePeriod(period)}
-                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                    timePeriod === period
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
-            </div>
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl">
+          <span className="text-xs font-bold text-slate-400">Total Mistakes</span>
+          <div className="text-2xl font-black text-white light:text-slate-900 mt-1">
+            {totalMistakesCount}
           </div>
+          <p className="text-[10px] text-slate-500 mt-0.5">Logged in {timePeriod}</p>
+        </div>
 
-          <div className="w-full h-64 pt-2">
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl">
+          <span className="text-xs font-bold text-slate-400">Most Common Leak</span>
+          <div className="text-2xl font-black text-rose-400 mt-1 truncate">
+            {mostCommon}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-0.5">Identified pattern</p>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl">
+          <span className="text-xs font-bold text-slate-400">Total Capital Cost</span>
+          <div className="text-2xl font-black text-rose-400 mt-1">
+            {totalLossFromMistakes > 0 ? `-${formatINR(totalLossFromMistakes)}` : '₹0.00'}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-0.5">Estimated cost of execution leaks</p>
+        </div>
+      </div>
+
+      {/* Distribution Chart or Empty State */}
+      {mistakeList.length === 0 ? (
+        <div className="p-12 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl text-center space-y-3">
+          <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto opacity-70" />
+          <h3 className="text-base font-bold text-white light:text-slate-900">Zero Execution Mistakes for August 2026</h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            You have zero mistakes recorded. Whenever you log a trade with tag errors (like FOMO, Greed, Early Exit), frequency charts and leak analyses will generate here.
+          </p>
+        </div>
+      ) : (
+        <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
+          <h3 className="text-sm font-bold text-white light:text-slate-900">
+            Mistake Distribution & Financial Impact
+          </h3>
+          <div className="w-full h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mistakeDistributionData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }}>
+              <BarChart data={mistakeList} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2942" vertical={false} />
                 <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis domain={[0, 2]} ticks={[0, 1, 2]} stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
@@ -172,75 +104,20 @@ export const MistakesPage: React.FC = () => {
                       return (
                         <div className="p-2.5 bg-[#0d1527] border border-[#223558] rounded-xl text-xs">
                           <p className="font-bold text-white">{item.name}</p>
-                          <p className="text-rose-400 font-semibold mt-0.5">{item.count} trade occurrences</p>
+                          <p className="text-rose-400 font-bold mt-0.5">Total Cost: -{formatINR(item.totalLoss)}</p>
+                          <p className="text-slate-400 text-[11px]">Occurrences: {item.tradeCount}</p>
                         </div>
                       );
                     }
                     return null;
                   }}
                 />
-                <Bar dataKey="count" fill="#818cf8" radius={[10, 10, 0, 0]} maxBarSize={64}>
-                  {mistakeDistributionData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill="#818cf8" />
-                  ))}
-                </Bar>
+                <Bar dataKey="tradeCount" fill="#f43f5e" radius={[6, 6, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-
-        {/* Right 1 Col: Frequency Heatmap */}
-        <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-black text-white light:text-slate-900">
-              Frequency Heatmap
-            </h3>
-            <span className="text-xs text-slate-400 font-bold flex items-center gap-1">
-              + 15 <ChevronRight className="w-3.5 h-3.5" />
-            </span>
-          </div>
-
-          <div className="space-y-2 my-auto">
-            <div className="flex justify-end items-center gap-1 text-[10px] text-slate-400 mb-2">
-              <span>Less</span>
-              <span className="w-2 h-2 rounded bg-[#152038]" />
-              <span className="w-2 h-2 rounded bg-blue-900/60" />
-              <span className="w-2 h-2 rounded bg-blue-600" />
-              <span className="w-2 h-2 rounded bg-blue-400" />
-              <span>More</span>
-            </div>
-
-            {/* Days header */}
-            <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-bold text-slate-500">
-              <span>M</span>
-              <span>T</span>
-              <span>W</span>
-              <span>T</span>
-              <span>F</span>
-              <span>S</span>
-              <span>S</span>
-            </div>
-
-            {/* Heatmap 5 rows */}
-            {heatmapData.map((row, rIdx) => (
-              <div key={rIdx} className="grid grid-cols-7 gap-2">
-                {row.map((val, cIdx) => (
-                  <div
-                    key={cIdx}
-                    className={`h-7 rounded-xl border transition-all ${getHeatmapColor(val)} hover:scale-110 cursor-pointer`}
-                    title={`${val} mistakes recorded`}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-
-          <p className="text-[11px] text-slate-400 text-center pt-2 border-t border-[#1e2942]">
-            Concentrated on Wednesday & Friday sessions
-          </p>
-        </div>
-
-      </div>
+      )}
     </div>
   );
 };
