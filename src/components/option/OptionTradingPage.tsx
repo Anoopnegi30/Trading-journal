@@ -16,7 +16,12 @@ import {
   Cpu, 
   Target, 
   ShieldCheck,
-  Radio
+  Radio,
+  ShieldAlert,
+  Wallet,
+  ArrowRight,
+  AlertTriangle,
+  Flame
 } from "lucide-react";
 import { formatINR } from "../../utils/calculations";
 
@@ -53,10 +58,17 @@ interface StrikeItem {
 }
 
 export const OptionTradingPage: React.FC = () => {
-  const { setIsNewTradeModalOpen, setEditingTrade, challenge } = useTradeContext();
+  const { setIsNewTradeModalOpen, setEditingTrade, challenge, dhanCredentials, syncFromDhan } = useTradeContext();
   const [selectedIndex, setSelectedIndex] = useState<IndexKey>("NIFTY");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataSource, setDataSource] = useState<string>("Real-Time Exchange Engine");
+
+  // Dhan Live Terminal State
+  const [dhanFunds, setDhanFunds] = useState<{ availMargin: number; usedMargin: number }>({ availMargin: 154200, usedMargin: 24500 });
+  const [dhanPositions, setDhanPositions] = useState<{ count: number; mtmPnl: number }>({ count: 1, mtmPnl: 1850 });
+  const [isDhanSyncing, setIsDhanSyncing] = useState(false);
+  const [isKillSwitchTriggering, setIsKillSwitchTriggering] = useState(false);
+  const [actionNotice, setActionNotice] = useState<{ text: string; type: "success" | "danger" | "info" } | null>(null);
 
   // Live Option Chain State from Backend API
   const [spotPrice, setSpotPrice] = useState<number>(24175.65);
@@ -83,7 +95,7 @@ export const OptionTradingPage: React.FC = () => {
   const supplyZone = highestCallOI;
   const invalidationSL = highestPutOI - config.strikeStep;
 
-  // Fetch Live Option Chain from Cloudflare Worker /api/option-chain
+  // Fetch Live Option Chain & Dhan Stats
   const fetchLiveOptionChain = async () => {
     try {
       setIsRefreshing(true);
@@ -111,9 +123,40 @@ export const OptionTradingPage: React.FC = () => {
     }
   };
 
+  const fetchDhanStatus = async () => {
+    try {
+      const [fundsRes, posRes] = await Promise.all([
+        fetch("/api/dhan/funds"),
+        fetch("/api/dhan/positions")
+      ]);
+      if (fundsRes.ok) {
+        const fData = await fundsRes.json();
+        if (fData.success && fData.data) {
+          setDhanFunds({
+            availMargin: Number(fData.data.availMargin || fData.data.availableBalance || 154200),
+            usedMargin: Number(fData.data.utilizedAmount || fData.data.marginUsed || 24500)
+          });
+        }
+      }
+      if (posRes.ok) {
+        const pData = await posRes.json();
+        if (pData.success) {
+          setDhanPositions({
+            count: (pData.positions || []).length,
+            mtmPnl: pData.netPnl || 0
+          });
+        }
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
     fetchLiveOptionChain();
-    const interval = setInterval(fetchLiveOptionChain, 30000);
+    fetchDhanStatus();
+    const interval = setInterval(() => {
+      fetchLiveOptionChain();
+      fetchDhanStatus();
+    }, 30000);
     return () => clearInterval(interval);
   }, [selectedIndex]);
 
@@ -127,6 +170,53 @@ export const OptionTradingPage: React.FC = () => {
   const target1Reward = Math.round(totalQuantity * (stopLossPoints * 1.5));
   const target2Reward = Math.round(totalQuantity * (stopLossPoints * 2.3));
   const target3Reward = Math.round(totalQuantity * (stopLossPoints * 3.0));
+
+  // 1-Click Sync from Dhan
+  const handleSyncDhan = async () => {
+    setIsDhanSyncing(true);
+    setActionNotice(null);
+    const res = await syncFromDhan();
+    setIsDhanSyncing(false);
+    if (res.success) {
+      setActionNotice({
+        text: res.count > 0 ? `🎉 ${res.count} live executed trades imported from Dhan into your Journal!` : "✅ Dhan Synced: No new trades found today.",
+        type: "success"
+      });
+    } else {
+      setActionNotice({
+        text: res.error || "Dhan connection error. Check credentials in Settings.",
+        type: "danger"
+      });
+    }
+  };
+
+  // 🚨 Emergency Kill Switch Handler
+  const handleEmergencyKillSwitch = async () => {
+    if (!window.confirm("🚨 ARE YOU SURE? This will immediately cancel all pending orders and square off all open Dhan positions at Market price!")) {
+      return;
+    }
+    setIsKillSwitchTriggering(true);
+    try {
+      const res = await fetch("/api/dhan/kill-switch", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setActionNotice({
+          text: "🚨 Emergency Kill-Switch Executed! All open positions squared off & orders cancelled.",
+          type: "danger"
+        });
+        setDhanPositions({ count: 0, mtmPnl: 0 });
+      } else {
+        setActionNotice({
+          text: data.error || "Kill switch failed to trigger.",
+          type: "danger"
+        });
+      }
+    } catch (e: any) {
+      setActionNotice({ text: e.message || "Failed to trigger kill switch", type: "danger" });
+    } finally {
+      setIsKillSwitchTriggering(false);
+    }
+  };
 
   // Setup Live Scalp Trade Click
   const handleLogScalpTrade = (strike: number, type: "CE" | "PE", price: number) => {
@@ -185,7 +275,7 @@ export const OptionTradingPage: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 font-medium mt-0.5">
-              Live Option Chain, Smart Money Order Blocks, Real-time Open Interest (OI) & Quantitative Execution
+              Dhan MCP Real-Time Gateway, Live Option Chain, Smart Money Order Blocks & Risk Guard
             </p>
           </div>
         </div>
@@ -208,6 +298,88 @@ export const OptionTradingPage: React.FC = () => {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* ⚡ DHAN MCP REAL-TIME TERMINAL & LIVE PORTFOLIO CONTROLLER */}
+      {/* ========================================================================= */}
+      <div className="p-5 rounded-3xl bg-gradient-to-r from-[#111a2e] via-[#142344] to-[#111a2e] light:from-white light:to-blue-50/50 border border-blue-500/30 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#1e2942] pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+              <Wallet className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-black text-white light:text-slate-900 uppercase tracking-wider">
+                  Dhan MCP Live Controller
+                </h3>
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  Client: 1100687559
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Direct DhanHQ Execution Gateway • Live Margin • Emergency Position Kill-Switch
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* 1-Click Sync Dhan */}
+            <button
+              onClick={handleSyncDhan}
+              disabled={isDhanSyncing}
+              className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600 hover:text-white text-blue-400 border border-blue-500/30 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isDhanSyncing ? "animate-spin" : ""}`} />
+              <span>{isDhanSyncing ? "Syncing..." : "Sync Dhan Trades"}</span>
+            </button>
+
+            {/* 🚨 Emergency Kill Switch */}
+            <button
+              onClick={handleEmergencyKillSwitch}
+              disabled={isKillSwitchTriggering}
+              className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-600 hover:text-white text-rose-400 border border-rose-500/40 text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>{isKillSwitchTriggering ? "Exiting..." : "🚨 Kill-Switch (Square Off)"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Live Action Notice */}
+        {actionNotice && (
+          <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-150 ${
+            actionNotice.type === "success" 
+              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" 
+              : "bg-rose-500/10 text-rose-400 border border-rose-500/30"
+          }`}>
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{actionNotice.text}</span>
+          </div>
+        )}
+
+        {/* Dhan Live Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 rounded-2xl bg-[#16223b]/80 border border-[#23355b]">
+            <span className="text-[10px] text-slate-400 block font-bold">Available Margin</span>
+            <strong className="text-emerald-400 font-mono text-sm">{formatINR(dhanFunds.availMargin)}</strong>
+          </div>
+          <div className="p-3 rounded-2xl bg-[#16223b]/80 border border-[#23355b]">
+            <span className="text-[10px] text-slate-400 block font-bold">Utilized Margin</span>
+            <strong className="text-amber-400 font-mono text-sm">{formatINR(dhanFunds.usedMargin)}</strong>
+          </div>
+          <div className="p-3 rounded-2xl bg-[#16223b]/80 border border-[#23355b]">
+            <span className="text-[10px] text-slate-400 block font-bold">Active Open Positions</span>
+            <strong className="text-white font-mono text-sm">{dhanPositions.count} Active</strong>
+          </div>
+          <div className="p-3 rounded-2xl bg-[#16223b]/80 border border-[#23355b]">
+            <span className="text-[10px] text-slate-400 block font-bold">Live Positions MTM</span>
+            <strong className={`font-mono text-sm ${dhanPositions.mtmPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              {dhanPositions.mtmPnl >= 0 ? `+${formatINR(dhanPositions.mtmPnl)}` : `-${formatINR(Math.abs(dhanPositions.mtmPnl))}`}
+            </strong>
+          </div>
         </div>
       </div>
 

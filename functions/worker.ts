@@ -583,6 +583,243 @@ export default {
       }
     }
 
+    // ==========================================
+    // DhanHQ Account Funds & Margin API Route
+    // ==========================================
+    if (url.pathname === '/api/dhan/funds') {
+      try {
+        let dhanCreds: any = null;
+        if (env.DB) {
+          try {
+            const row: any = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind('dhanCredentials').first();
+            if (row && row.value) dhanCreds = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+          } catch (e) {}
+        }
+
+        const clientId = url.searchParams.get('clientId') || dhanCreds?.clientId;
+        const accessToken = url.searchParams.get('accessToken') || dhanCreds?.accessToken;
+
+        if (!clientId || !accessToken) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'Dhan credentials not found. Please connect your Dhan account.' 
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        const res = await fetch('https://api.dhan.co/v2/fundlimit', {
+          headers: {
+            'access-token': accessToken.trim(),
+            'client-id': clientId.trim(),
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!res.ok) {
+          const errTxt = await res.text();
+          return new Response(JSON.stringify({ success: false, error: `Dhan Error: ${errTxt}` }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        const data: any = await res.json();
+        return new Response(JSON.stringify({ success: true, data: data.data || data }), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+
+    // ==========================================
+    // DhanHQ Live Positions & MTM P&L API Route
+    // ==========================================
+    if (url.pathname === '/api/dhan/positions') {
+      try {
+        let dhanCreds: any = null;
+        if (env.DB) {
+          try {
+            const row: any = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind('dhanCredentials').first();
+            if (row && row.value) dhanCreds = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+          } catch (e) {}
+        }
+
+        const clientId = url.searchParams.get('clientId') || dhanCreds?.clientId;
+        const accessToken = url.searchParams.get('accessToken') || dhanCreds?.accessToken;
+
+        if (!clientId || !accessToken) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'Dhan credentials not found. Please connect your Dhan account.' 
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        const res = await fetch('https://api.dhan.co/v2/positions', {
+          headers: {
+            'access-token': accessToken.trim(),
+            'client-id': clientId.trim(),
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!res.ok) {
+          const errTxt = await res.text();
+          return new Response(JSON.stringify({ success: false, error: `Dhan Error: ${errTxt}` }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        const data: any = await res.json();
+        const positions = Array.isArray(data) ? data : (data.data || []);
+        let totalRealized = 0;
+        let totalUnrealized = 0;
+
+        positions.forEach((p: any) => {
+          totalRealized += Number(p.realizedProfit || 0);
+          totalUnrealized += Number(p.unrealizedProfit || 0);
+        });
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          positions,
+          totalRealized: Number(totalRealized.toFixed(2)),
+          totalUnrealized: Number(totalUnrealized.toFixed(2)),
+          netPnl: Number((totalRealized + totalUnrealized).toFixed(2))
+        }), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+
+    // ==========================================
+    // DhanHQ 1-Click Order Execution API Route
+    // ==========================================
+    if (url.pathname === '/api/dhan/order' && request.method === 'POST') {
+      try {
+        const body: any = await request.json();
+        let { clientId, accessToken, securityId, exchangeSegment, transactionType, quantity, orderType, productType, price } = body;
+
+        if (!clientId || !accessToken) {
+          if (env.DB) {
+            try {
+              const row: any = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind('dhanCredentials').first();
+              if (row && row.value) {
+                const creds = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                clientId = clientId || creds.clientId;
+                accessToken = accessToken || creds.accessToken;
+              }
+            } catch (e) {}
+          }
+        }
+
+        if (!clientId || !accessToken) {
+          return new Response(JSON.stringify({ success: false, error: 'Dhan credentials missing.' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        const dhanOrderPayload = {
+          dhanClientId: clientId.trim(),
+          correlationId: `AGY-${Date.now()}`,
+          transactionType: transactionType || 'BUY',
+          exchangeSegment: exchangeSegment || 'NSE_FNO',
+          productType: productType || 'INTRADAY',
+          orderType: orderType || 'MARKET',
+          validity: 'DAY',
+          securityId: String(securityId || '13'),
+          quantity: Number(quantity || 65),
+          price: Number(price || 0)
+        };
+
+        const res = await fetch('https://api.dhan.co/v2/orders', {
+          method: 'POST',
+          headers: {
+            'access-token': accessToken.trim(),
+            'client-id': clientId.trim(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(dhanOrderPayload)
+        });
+
+        const resData: any = await res.json();
+        return new Response(JSON.stringify({ success: res.ok, data: resData }), {
+          status: res.ok ? 200 : 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+
+    // ==========================================
+    // DhanHQ Emergency Kill-Switch (Square Off All Positions)
+    // ==========================================
+    if (url.pathname === '/api/dhan/kill-switch' && request.method === 'POST') {
+      try {
+        let dhanCreds: any = null;
+        if (env.DB) {
+          try {
+            const row: any = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind('dhanCredentials').first();
+            if (row && row.value) dhanCreds = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+          } catch (e) {}
+        }
+
+        const body: any = await request.json().catch(() => ({}));
+        const clientId = body.clientId || dhanCreds?.clientId;
+        const accessToken = body.accessToken || dhanCreds?.accessToken;
+
+        if (!clientId || !accessToken) {
+          return new Response(JSON.stringify({ success: false, error: 'Dhan credentials missing.' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        // Call Dhan Kill Switch API to cancel all pending orders and square off all open positions
+        const res = await fetch('https://api.dhan.co/v2/positions', {
+          method: 'DELETE',
+          headers: {
+            'access-token': accessToken.trim(),
+            'client-id': clientId.trim(),
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const resData: any = await res.json().catch(() => ({}));
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: '🚨 Emergency Kill-Switch Triggered! All positions squared off & orders cancelled.',
+          data: resData 
+        }), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+
     // Serve Frontend Static Assets
     return env.ASSETS.fetch(request);
   }
