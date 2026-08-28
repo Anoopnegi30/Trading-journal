@@ -16,6 +16,7 @@ export type NavTab =
   | 'reports' 
   | 'risk-management' 
   | 'challenge' 
+  | 'option-trading'
   | 'calendar';
 
 interface TradeContextType {

@@ -12,7 +12,8 @@ import {
   Scale,
   Calendar,
   Trophy,
-  Plus
+  Plus,
+  Zap
 } from 'lucide-react';
 
 interface NavItem {
@@ -40,7 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'risk-management', label: 'Risk Management', icon: Scale },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'challenge', label: 'Challenge', icon: Trophy }
+    { id: 'challenge', label: 'Challenge', icon: Trophy },
+    { id: 'option-trading', label: 'Option Trading', icon: Zap, badge: 'PRO' }
   ];
 
   return (

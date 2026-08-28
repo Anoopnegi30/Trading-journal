@@ -14,6 +14,7 @@ import { AiSummarizerPage } from './components/ai/AiSummarizerPage';
 import { RiskManagementPage } from './components/risk/RiskManagementPage';
 import { ReportsPage } from './components/reports/ReportsPage';
 import { ChallengePage } from './components/challenge/ChallengePage';
+import { OptionTradingPage } from './components/option/OptionTradingPage';
 import { NewTradeModal } from './components/modal/NewTradeModal';
 import { TradeDetailModal } from './components/trades/TradeDetailModal';
 import { AiChatWidget } from './components/ai/AiChatWidget';
@@ -25,7 +26,8 @@ import {
   Trophy, 
   Lightbulb, 
   Plus,
-  Layers
+  Layers,
+  Zap
 } from 'lucide-react';
 
 const MainContent: React.FC = () => {
@@ -61,6 +63,8 @@ const MainContent: React.FC = () => {
         return <ReportsPage />;
       case 'challenge':
         return <ChallengePage />;
+      case 'option-trading':
+        return <OptionTradingPage />;
       default:
         return <DashboardPage />;
     }
