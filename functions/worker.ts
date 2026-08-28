@@ -385,13 +385,15 @@ export default {
             const meta = data.chart?.result?.[0]?.meta;
             if (!meta) return null;
             const price = Number(meta.regularMarketPrice || 0);
-            const changePercent = Number(meta.regularMarketChangePercent || 0);
+            const prevClose = Number(meta.chartPreviousClose || meta.previousClose || price);
+            const change = Number((price - prevClose).toFixed(2));
+            const changePercent = prevClose > 0 ? Number(((change / prevClose) * 100).toFixed(2)) : 0;
             return {
               symbol: item.name,
               name: item.name,
               value: price,
-              change: Number((price * (changePercent / 100)).toFixed(2)),
-              changePercent: Number(changePercent.toFixed(2))
+              change,
+              changePercent
             };
           } catch (e) {
             return null;

@@ -49,11 +49,16 @@ export const TickerBar: React.FC = () => {
               return (
                 <div
                   key={idx}
-                  className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-[#131d35]/60 light:bg-slate-100 border border-[#1e2d4d] light:border-slate-200 transition-all hover:bg-[#192647]"
+                  className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-xl bg-[#131d35]/80 light:bg-slate-100 border border-[#1e2d4d] light:border-slate-200 transition-all hover:bg-[#192647] shadow-sm"
                 >
                   <span className="font-medium text-slate-300 light:text-slate-700">{item.name}:</span>
+                  {item.value > 0 && (
+                    <span className="font-mono text-slate-200 light:text-slate-800 font-semibold text-[11px]">
+                      {item.value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                    </span>
+                  )}
                   <span
-                    className={`font-semibold flex items-center gap-0.5 ${
+                    className={`font-semibold flex items-center gap-0.5 font-mono text-[11px] ${
                       isPositive ? 'text-emerald-400 light:text-emerald-600' : 'text-rose-400 light:text-rose-600'
                     }`}
                   >
