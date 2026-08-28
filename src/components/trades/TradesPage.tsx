@@ -308,6 +308,7 @@ export const TradesPage: React.FC = () => {
                 <th className="py-3.5 px-4">Gross P&L (Dhan)</th>
                 <th className="py-3.5 px-4">Taxes (₹)</th>
                 <th className="py-3.5 px-4">Net P&L</th>
+                <th className="py-3.5 px-4">R:R</th>
                 <th className="py-3.5 px-4">Strategy</th>
                 <th className="py-3.5 px-4">Outcome</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
@@ -384,6 +385,13 @@ export const TradesPage: React.FC = () => {
                         <span className={`flex items-center gap-0.5 ${isNetWin ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {isNetWin ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                           {formatINR(trade.netPnl)}
+                        </span>
+                      </td>
+                      
+                      {/* R:R Ratio */}
+                      <td className="py-3.5 px-4 font-mono font-bold">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                          {trade.riskReward || '1:2.0'}
                         </span>
                       </td>
 

@@ -24,7 +24,8 @@ import {
   HelpCircle,
   ShoppingBag,
   Zap,
-  Edit3
+  Edit3,
+  Scale
 } from 'lucide-react';
 
 export const NewTradeModal: React.FC = () => {
@@ -163,14 +164,50 @@ export const NewTradeModal: React.FC = () => {
   const netPnl = grossPnl - numFees;
   const pnlPercent = totalAmount > 0 ? Number(((grossPnl / totalAmount) * 100).toFixed(2)) : 0;
 
+  // Smart Auto R:R Calculation Logic
+  const numStopLoss = Number(stopLoss) || 0;
+  const numTarget = Number(target) || 0;
+
+  let riskPts = 0;
+  let rewardPts = 0;
   let computedRr = '1:2.0';
-  if (numEntry > 0 && Number(stopLoss) > 0 && Number(target) > 0) {
-    const risk = Math.abs(numEntry - Number(stopLoss));
-    const reward = Math.abs(Number(target) - numEntry);
-    if (risk > 0) {
-      computedRr = `1:${(reward / risk).toFixed(2)}`;
+
+  if (numEntry > 0) {
+    if (numStopLoss > 0) {
+      riskPts = Math.abs(numEntry - numStopLoss);
+    } else {
+      riskPts = numEntry > 50 ? 5 : Number((numEntry * 0.05).toFixed(2));
+    }
+
+    if (numTarget > 0) {
+      rewardPts = Math.abs(numTarget - numEntry);
+    } else if (numExit > 0) {
+      rewardPts = Math.abs(numExit - numEntry);
+    } else {
+      rewardPts = riskPts * 2;
+    }
+
+    if (riskPts > 0) {
+      const ratio = rewardPts / riskPts;
+      computedRr = `1:${ratio >= 10 ? ratio.toFixed(1) : ratio.toFixed(2)}`;
     }
   }
+
+  const handleApplyPresetRR = (multiplier: number) => {
+    if (!numEntry) return;
+    const slDist = riskPts > 0 ? riskPts : 5;
+    if (direction === 'Long') {
+      const calculatedSl = Number((numEntry - slDist).toFixed(2));
+      const calculatedTarget = Number((numEntry + slDist * multiplier).toFixed(2));
+      setStopLoss(calculatedSl > 0 ? calculatedSl : 1);
+      setTarget(calculatedTarget);
+    } else {
+      const calculatedSl = Number((numEntry + slDist).toFixed(2));
+      const calculatedTarget = Number((numEntry - slDist * multiplier).toFixed(2));
+      setStopLoss(calculatedSl);
+      setTarget(calculatedTarget > 0 ? calculatedTarget : 1);
+    }
+  };
 
   const toggleMistake = (m: string) => {
     if (m === 'No Mistakes') {
@@ -597,6 +634,40 @@ export const NewTradeModal: React.FC = () => {
                     onChange={(e) => setTarget(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] rounded-xl px-3 py-2 text-slate-200 font-mono focus:outline-none"
                   />
+                </div>
+              </div>
+
+              {/* Live Auto Risk-to-Reward (R:R) Calculation Banner */}
+              <div className="p-3.5 rounded-2xl bg-[#16223b]/80 light:bg-slate-50 border border-[#23355b] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-inner">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                    <Scale className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-300 light:text-slate-700">Auto-Calculated R:R</span>
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-blue-600 text-white font-mono shadow-sm">
+                        {computedRr}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Risk: <strong className="text-rose-400 font-mono">{riskPts.toFixed(2)} pts ({formatINR(riskPts * numQty)})</strong> • Target: <strong className="text-emerald-400 font-mono">{rewardPts.toFixed(2)} pts ({formatINR(rewardPts * numQty)})</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 w-full sm:w-auto flex-wrap">
+                  <span className="text-[10px] text-slate-400 font-semibold mr-1">Auto-Set Target:</span>
+                  {[1.5, 2.0, 2.5, 3.0].map(multiplier => (
+                    <button
+                      key={multiplier}
+                      type="button"
+                      onClick={() => handleApplyPresetRR(multiplier)}
+                      className="px-2 py-1 rounded-lg bg-[#111a2e] hover:bg-blue-600 hover:text-white text-slate-300 border border-[#23355b] text-[10px] font-bold font-mono transition-colors cursor-pointer"
+                    >
+                      1:{multiplier.toFixed(1)}
+                    </button>
+                  ))}
                 </div>
               </div>
 
