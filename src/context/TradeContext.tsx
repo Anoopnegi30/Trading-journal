@@ -97,6 +97,7 @@ const AUTH_STORAGE_KEY = 'trade_diary_auth_v4';
 const PROFILE_STORAGE_KEY = 'trade_diary_profile_v4';
 const DHAN_CREDS_STORAGE_KEY = 'trade_diary_dhan_creds_v4';
 const CHALLENGE_STORAGE_KEY = 'trade_diary_challenge_v4';
+const TAB_STORAGE_KEY = 'trade_diary_active_tab_v4';
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Anoop Negi',
@@ -198,7 +199,11 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return INITIAL_CHECKLIST;
   });
 
-  const [activeTab, setActiveTab] = useState<NavTab>('trades');
+  const [activeTab, setActiveTab] = useState<NavTab>(() => {
+    const saved = localStorage.getItem(TAB_STORAGE_KEY);
+    if (saved) return saved as NavTab;
+    return 'dashboard';
+  });
   const [isNewTradeModalOpen, setIsNewTradeModalOpen] = useState<boolean>(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -312,6 +317,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem(CHALLENGE_STORAGE_KEY, JSON.stringify(challenge));
   }, [challenge]);
+
+  useEffect(() => {
+    localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
