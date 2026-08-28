@@ -61,10 +61,10 @@ export const AiChatWidget: React.FC = () => {
 
   return (
     <>
-      {/* Floating Button matching screenshot */}
+      {/* Floating Button visible only on Desktop (hidden on mobile/phone) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-teal-500 via-cyan-600 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-bold text-xs shadow-2xl shadow-cyan-500/40 hover:shadow-cyan-500/60 transition-all transform hover:scale-105 active:scale-95"
+        className="hidden lg:flex fixed bottom-5 right-5 z-40 items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-teal-500 via-cyan-600 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white font-bold text-xs shadow-2xl shadow-cyan-500/40 hover:shadow-cyan-500/60 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
       >
         <MessageSquare className="w-4 h-4 fill-white/20" />
         <span>Chat with AI</span>
@@ -72,7 +72,7 @@ export const AiChatWidget: React.FC = () => {
 
       {/* Interactive Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-18 right-5 z-50 w-84 sm:w-96 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-2xl flex flex-col h-[460px] animate-in fade-in slide-in-from-bottom-5 duration-150 overflow-hidden">
+        <div className="hidden lg:flex fixed bottom-18 right-5 z-50 w-84 sm:w-96 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-2xl flex-col h-[460px] animate-in fade-in slide-in-from-bottom-5 duration-150 overflow-hidden">
           {/* Header */}
           <div className="p-4 bg-gradient-to-r from-cyan-900/60 to-blue-900/60 border-b border-[#1e2942] light:border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
