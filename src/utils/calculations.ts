@@ -50,6 +50,29 @@ export function calculateDashboardStats(trades: Trade[]): DashboardStats {
   const winRate = validTrades.length > 0 ? (winningTrades / validTrades.length) * 100 : 0;
   const profitFactor = totalGrossLoss > 0 ? totalGrossProfit / totalGrossLoss : totalGrossProfit > 0 ? 99 : 0;
 
+  // Dynamic Realized R:R ratio calculation
+  let avgRiskReward = '1:2.0';
+  if (winningTrades > 0 && losingTrades > 0 && totalGrossLoss > 0) {
+    const avgWinAmt = totalGrossProfit / winningTrades;
+    const avgLossAmt = totalGrossLoss / losingTrades;
+    if (avgLossAmt > 0) {
+      avgRiskReward = `1:${(avgWinAmt / avgLossAmt).toFixed(1)}`;
+    }
+  } else {
+    const rrNumbers = validTrades
+      .map(t => {
+        if (t.riskReward && t.riskReward.includes(':')) {
+          return parseFloat(t.riskReward.split(':')[1]);
+        }
+        return null;
+      })
+      .filter((n): n is number => n !== null && !isNaN(n));
+    if (rrNumbers.length > 0) {
+      const avg = rrNumbers.reduce((a, b) => a + b, 0) / rrNumbers.length;
+      avgRiskReward = `1:${avg.toFixed(1)}`;
+    }
+  }
+
   // Confidence index calculation based on rules adherence and win rate
   const disciplinedTrades = validTrades.filter(t => t.followedPlan && t.followedRisk).length;
   const disciplinePercent = validTrades.length > 0 ? (disciplinedTrades / validTrades.length) * 100 : 80;
@@ -74,7 +97,7 @@ export function calculateDashboardStats(trades: Trade[]): DashboardStats {
     highestPnlChangePercent: +10.0,
     winRate: Number(winRate.toFixed(1)),
     winRateChangePercent: 0,
-    avgRiskReward: '1:2.5',
+    avgRiskReward,
     avgRiskRewardChangePercent: 0,
     tradesThisMonth: validTrades.length,
     tradesThisMonthChange: validTrades.length,
