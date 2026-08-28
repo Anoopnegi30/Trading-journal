@@ -69,6 +69,15 @@ export const INITIAL_STRATEGIES: TradingStrategy[] = [
     targetRiskReward: '1:3.0',
     timeframe: '15 Min',
     active: true
+  },
+  {
+    id: 'strat-7',
+    name: 'Trend Line',
+    description: 'Custom technical trading setup.',
+    targetWinRate: '60%',
+    targetRiskReward: '1:2',
+    timeframe: '5 Min',
+    active: true
   }
 ];
 
