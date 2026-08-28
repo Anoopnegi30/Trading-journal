@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem } from '../types/trade';
 import { INITIAL_TRADES, INITIAL_RULES, INITIAL_CHECKLIST, INITIAL_TICKER } from '../utils/mockData';
+import { fetchCloudTrades, saveTradeToCloud, syncAllTradesToCloud, deleteTradeFromCloud } from '../utils/cloudSync';
 import confetti from 'canvas-confetti';
 import Papa from 'papaparse';
 
@@ -51,6 +52,9 @@ interface TradeContextType {
   checklist: ChecklistItem[];
   toggleChecklist: (id: string) => void;
   resetChecklist: () => void;
+  
+  isCloudSynced: boolean;
+  syncToCloud: () => Promise<void>;
   
   exportCsv: () => void;
   importCsv: (file: File) => Promise<{ success: boolean; count: number; error?: string }>;
@@ -107,6 +111,20 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [marketFilter, setMarketFilter] = useState<string>('Indian');
   const [dateFilter, setDateFilter] = useState<string>('Last 30 Days');
   const [ticker, setTicker] = useState<MarketTickerItem[]>(INITIAL_TICKER);
+  const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
+
+  // Initial cloud fetch on startup
+  useEffect(() => {
+    fetchCloudTrades().then(cloudTrades => {
+      if (cloudTrades && cloudTrades.length > 0) {
+        setTrades(cloudTrades);
+        setIsCloudSynced(true);
+      } else if (trades.length > 0) {
+        // Sync local initial trades to cloud
+        syncAllTradesToCloud(trades);
+      }
+    });
+  }, []);
 
   // Sync with LocalStorage
   useEffect(() => {
@@ -154,6 +172,12 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  const syncToCloud = async () => {
+    setIsCloudSynced(false);
+    await syncAllTradesToCloud(trades);
+    setIsCloudSynced(true);
+  };
+
   const addTrade = (tradeData: Omit<Trade, 'id' | 'createdAt'>) => {
     const newTrade: Trade = {
       ...tradeData,
@@ -162,6 +186,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     
     setTrades(prev => [newTrade, ...prev]);
+    saveTradeToCloud(newTrade);
 
     // Celebrate if profitable
     if (newTrade.netPnl > 0) {
@@ -177,11 +202,17 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateTrade = (id: string, updatedFields: Partial<Trade>) => {
-    setTrades(prev => prev.map(t => (t.id === id ? { ...t, ...updatedFields } : t)));
+    setTrades(prev => {
+      const next = prev.map(t => (t.id === id ? { ...t, ...updatedFields } : t));
+      const updatedItem = next.find(t => t.id === id);
+      if (updatedItem) saveTradeToCloud(updatedItem);
+      return next;
+    });
   };
 
   const deleteTrade = (id: string) => {
     setTrades(prev => prev.filter(t => t.id !== id));
+    deleteTradeFromCloud(id);
     if (selectedTrade?.id === id) {
       setSelectedTrade(null);
     }
@@ -222,89 +253,80 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       EntryPrice: t.entryPrice,
       ExitPrice: t.exitPrice,
       Quantity: t.quantity,
-      StopLoss: t.stopLoss || '',
-      Target: t.target || '',
-      Pnl: t.pnl,
       Fees: t.fees,
-      NetPnl: t.netPnl,
-      PnlPercent: t.pnlPercent,
-      RiskReward: t.riskReward,
+      NetPnL: t.netPnl,
       Strategy: t.strategy,
-      Outcome: t.outcome,
       Emotion: t.emotion,
       Confidence: t.confidence,
-      Mistakes: t.mistakes.join('; '),
+      Mistakes: (t.mistakes || []).join('; '),
       Notes: t.notes || ''
     })));
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `trade-diary-export-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `trade_diary_export_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const importCsv = async (file: File): Promise<{ success: boolean; count: number; error?: string }> => {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       Papa.parse(file, {
         header: true,
-        dynamicTyping: true,
+        skipEmptyLines: true,
         complete: (results) => {
           try {
-            const rawData = results.data as any[];
-            const parsedTrades: Trade[] = [];
+            const rows = results.data as any[];
+            const importedTrades: Trade[] = rows.map((row, i) => {
+              const entry = parseFloat(row.EntryPrice || row.Entry || '0') || 0;
+              const exit = parseFloat(row.ExitPrice || row.Exit || '0') || 0;
+              const qty = parseFloat(row.Quantity || row.Qty || '1') || 1;
+              const fees = parseFloat(row.Fees || row.Charges || '0') || 0;
+              const dir = (row.Direction || 'Long').toLowerCase().includes('short') ? 'Short' : 'Long';
+              const gross = dir === 'Long' ? (exit - entry) * qty : (entry - exit) * qty;
+              const net = row.NetPnL ? parseFloat(row.NetPnL) : gross - fees;
 
-            rawData.forEach((row, idx) => {
-              if (!row.Symbol && !row.symbol && !row.Date && !row.date) return;
-              
-              const entry = Number(row.EntryPrice || row.entryPrice || 0);
-              const exit = Number(row.ExitPrice || row.exitPrice || 0);
-              const qty = Number(row.Quantity || row.quantity || 1);
-              const netPnl = Number(row.NetPnl || row.netPnl || (exit - entry) * qty);
-              
-              const newTrade: Trade = {
-                id: 'tr-imp-' + Date.now() + '-' + idx,
-                date: String(row.Date || row.date || new Date().toISOString().slice(0, 10)),
-                time: String(row.Time || row.time || '10:00'),
-                marketType: (row.Market || row.marketType || 'Indian') as MarketType,
-                duration: (row.Duration || row.duration || 'Intraday'),
-                symbol: String(row.Symbol || row.symbol || 'STOCK'),
-                direction: (row.Direction || row.direction || (netPnl >= 0 ? 'Long' : 'Short')),
+              return {
+                id: `import-${Date.now()}-${i}`,
+                date: row.Date || new Date().toISOString().split('T')[0],
+                time: row.Time || '10:00',
+                marketType: (row.Market || 'Indian') as MarketType,
+                duration: (row.Duration || 'Intraday') as any,
+                symbol: (row.Symbol || 'SYMBOL').toUpperCase(),
+                direction: dir as any,
                 entryPrice: entry,
                 exitPrice: exit,
                 quantity: qty,
                 totalAmount: entry * qty,
-                stopLoss: Number(row.StopLoss || row.stopLoss || 0),
-                target: Number(row.Target || row.target || 0),
-                pnl: Number(row.Pnl || row.pnl || netPnl),
-                fees: Number(row.Fees || row.fees || 0),
-                netPnl: netPnl,
-                pnlPercent: Number(row.PnlPercent || row.pnlPercent || 0),
-                riskReward: String(row.RiskReward || row.riskReward || '1:2.0'),
-                strategy: String(row.Strategy || row.strategy || 'Breakout'),
-                outcome: (row.Outcome || row.outcome || (netPnl >= 0 ? 'Full Success' : 'Loss')),
-                emotion: (row.Emotion || row.emotion || 'Disciplined'),
-                confidence: Number(row.Confidence || row.confidence || 80),
-                mistakes: row.Mistakes ? String(row.Mistakes).split(';').map(s => s.trim()) : [],
+                fees: fees,
+                pnl: gross,
+                netPnl: net,
+                pnlPercent: entry > 0 ? Number(((gross / (entry * qty)) * 100).toFixed(2)) : 0,
+                riskReward: '1:2.0',
+                strategy: row.Strategy || 'Breakout',
+                outcome: net >= 0 ? 'Full Success' : 'Loss',
+                emotion: (row.Emotion || 'Disciplined') as any,
+                confidence: parseInt(row.Confidence || '80', 10) || 80,
+                mistakes: row.Mistakes ? row.Mistakes.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
                 followedPlan: true,
                 followedRisk: true,
-                notes: String(row.Notes || row.notes || ''),
+                notes: row.Notes || 'Imported via CSV',
                 createdAt: new Date().toISOString()
               };
-              parsedTrades.push(newTrade);
             });
 
-            if (parsedTrades.length > 0) {
-              setTrades(prev => [...parsedTrades, ...prev]);
-              resolve({ success: true, count: parsedTrades.length });
+            if (importedTrades.length > 0) {
+              setTrades(prev => [...importedTrades, ...prev]);
+              syncAllTradesToCloud(importedTrades);
+              resolve({ success: true, count: importedTrades.length });
             } else {
               resolve({ success: false, count: 0, error: 'No valid trade rows found in CSV' });
             }
           } catch (err: any) {
-            resolve({ success: false, count: 0, error: err?.message || 'Error processing CSV' });
+            resolve({ success: false, count: 0, error: err.message || 'Parsing error' });
           }
         },
         error: (error) => {
@@ -315,12 +337,15 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const resetToSampleData = () => {
-    setTrades(INITIAL_TRADES);
-    setRules(INITIAL_RULES);
-    setChecklist(INITIAL_CHECKLIST);
-    localStorage.removeItem(TRADES_STORAGE_KEY);
-    localStorage.removeItem(RULES_STORAGE_KEY);
-    localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+    if (window.confirm('Reset all trades and statistics back to demo data?')) {
+      setTrades(INITIAL_TRADES);
+      setRules(INITIAL_RULES);
+      setChecklist(INITIAL_CHECKLIST);
+      syncAllTradesToCloud(INITIAL_TRADES);
+      localStorage.removeItem(TRADES_STORAGE_KEY);
+      localStorage.removeItem(RULES_STORAGE_KEY);
+      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+    }
   };
 
   return (
@@ -350,6 +375,8 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         checklist,
         toggleChecklist,
         resetChecklist,
+        isCloudSynced,
+        syncToCloud,
         exportCsv,
         importCsv,
         resetToSampleData
