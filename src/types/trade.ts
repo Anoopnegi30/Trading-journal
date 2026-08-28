@@ -78,6 +78,7 @@ export interface StrategyPerformance {
   winRate: number;
   totalPnl: number;
   avgPnl: number;
+  realizedRR?: string;
 }
 
 export interface MistakeAnalysis {

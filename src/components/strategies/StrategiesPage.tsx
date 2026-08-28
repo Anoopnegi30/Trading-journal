@@ -118,16 +118,22 @@ export const StrategiesPage: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[#1e2942] light:border-slate-200 text-xs">
                 <div className="p-2 rounded-xl bg-[#16223b]/60 light:bg-slate-50 border border-[#23355b]/50">
-                  <span className="text-[10px] text-slate-400">Target Win</span>
-                  <p className="font-bold text-white light:text-slate-900 mt-0.5">{strat.targetWinRate || '60%'}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold">{hasTrades ? 'Actual Win %' : 'Target Win'}</span>
+                  <p className={`font-bold mt-0.5 ${hasTrades ? (perf.winRate >= 50 ? 'text-emerald-400' : 'text-rose-400') : 'text-white light:text-slate-900'}`}>
+                    {hasTrades ? `${perf.winRate}%` : (strat.targetWinRate || '60%')}
+                  </p>
                 </div>
                 <div className="p-2 rounded-xl bg-[#16223b]/60 light:bg-slate-50 border border-[#23355b]/50">
-                  <span className="text-[10px] text-slate-400">Target R:R</span>
-                  <p className="font-bold text-white light:text-slate-900 mt-0.5">{strat.targetRiskReward || '1:2.5'}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold">{hasTrades ? 'Realized R:R' : 'Target R:R'}</span>
+                  <p className={`font-bold mt-0.5 ${hasTrades ? 'text-blue-400' : 'text-white light:text-slate-900'}`}>
+                    {hasTrades ? (perf.realizedRR || '1:2.0') : (strat.targetRiskReward || '1:2.5')}
+                  </p>
                 </div>
                 <div className="p-2 rounded-xl bg-[#16223b]/60 light:bg-slate-50 border border-[#23355b]/50">
-                  <span className="text-[10px] text-slate-400">Aug Trades</span>
-                  <p className="font-bold text-blue-400 mt-0.5">{hasTrades ? perf.totalTrades : '0'}</p>
+                  <span className="text-[10px] text-slate-400 font-semibold">Aug Trades</span>
+                  <p className="font-bold text-white light:text-slate-900 mt-0.5">
+                    {hasTrades ? `${perf.totalTrades} trade${perf.totalTrades > 1 ? 's' : ''}` : '0 trades'}
+                  </p>
                 </div>
               </div>
             </div>

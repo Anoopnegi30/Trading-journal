@@ -91,25 +91,41 @@ export function calculateDashboardStats(trades: Trade[]): DashboardStats {
 
 export function getStrategyPerformance(trades: Trade[]): StrategyPerformance[] {
   const validTrades = trades.filter(t => !t.isNoTradeDay && t.strategy);
-  const strategyMap = new Map<string, { trades: number; wins: number; totalPnl: number }>();
+  const strategyMap = new Map<string, { trades: number; wins: number; totalPnl: number; totalGain: number; totalLoss: number; avgRR: string }>();
 
   validTrades.forEach(t => {
     const s = t.strategy.trim() || 'Uncategorized';
-    const current = strategyMap.get(s) || { trades: 0, wins: 0, totalPnl: 0 };
+    const current = strategyMap.get(s) || { trades: 0, wins: 0, totalPnl: 0, totalGain: 0, totalLoss: 0, avgRR: t.riskReward || '1:2.0' };
     current.trades += 1;
-    if (t.netPnl > 0) current.wins += 1;
+    if (t.netPnl > 0) {
+      current.wins += 1;
+      current.totalGain += t.netPnl;
+    } else {
+      current.totalLoss += Math.abs(t.netPnl);
+    }
     current.totalPnl += t.netPnl;
+    if (t.riskReward) current.avgRR = t.riskReward;
     strategyMap.set(s, current);
   });
 
-  return Array.from(strategyMap.entries()).map(([name, data]) => ({
-    name,
-    totalTrades: data.trades,
-    winCount: data.wins,
-    winRate: Number(((data.wins / data.trades) * 100).toFixed(1)),
-    totalPnl: Number(data.totalPnl.toFixed(2)),
-    avgPnl: Number((data.totalPnl / data.trades).toFixed(2))
-  })).sort((a, b) => b.totalPnl - a.totalPnl);
+  return Array.from(strategyMap.entries()).map(([name, data]) => {
+    let realizedRR = data.avgRR || '1:2.0';
+    if (data.totalLoss > 0 && data.totalGain > 0 && data.trades > 1) {
+      const avgWin = data.totalGain / (data.wins || 1);
+      const avgLoss = data.totalLoss / (data.trades - data.wins || 1);
+      if (avgLoss > 0) realizedRR = `1:${(avgWin / avgLoss).toFixed(1)}`;
+    }
+
+    return {
+      name,
+      totalTrades: data.trades,
+      winCount: data.wins,
+      winRate: Number(((data.wins / data.trades) * 100).toFixed(1)),
+      totalPnl: Number(data.totalPnl.toFixed(2)),
+      avgPnl: Number((data.totalPnl / data.trades).toFixed(2)),
+      realizedRR
+    };
+  }).sort((a, b) => b.totalPnl - a.totalPnl);
 }
 
 export function getMistakesBreakdown(trades: Trade[]): MistakeAnalysis[] {
