@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TradeProvider, useTradeContext } from './context/TradeContext';
+import { LoginPage } from './components/auth/LoginPage';
 import { Sidebar } from './components/layout/Sidebar';
 import { TickerBar } from './components/layout/TickerBar';
 import { DashboardPage } from './components/dashboard/DashboardPage';
@@ -19,8 +20,13 @@ import { AiChatWidget } from './components/ai/AiChatWidget';
 import { Menu, X } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { activeTab } = useTradeContext();
+  const { activeTab, isAuthenticated } = useTradeContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // If not authenticated, render Login Page
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   const renderActivePage = () => {
     switch (activeTab) {

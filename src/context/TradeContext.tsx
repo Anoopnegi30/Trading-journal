@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem, TradingStrategy } from '../types/trade';
+import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem, TradingStrategy, UserProfile } from '../types/trade';
 import { INITIAL_TRADES, INITIAL_RULES, INITIAL_CHECKLIST, INITIAL_TICKER, INITIAL_STRATEGIES } from '../utils/mockData';
 import { fetchCloudTrades, saveTradeToCloud, syncAllTradesToCloud, deleteTradeFromCloud } from '../utils/cloudSync';
 import confetti from 'canvas-confetti';
@@ -19,6 +19,15 @@ export type NavTab =
   | 'calendar';
 
 interface TradeContextType {
+  // Auth state
+  isAuthenticated: boolean;
+  login: (email: string, password?: string) => void;
+  logout: () => void;
+
+  // Profile state
+  userProfile: UserProfile;
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
+
   trades: Trade[];
   addTrade: (trade: Omit<Trade, 'id' | 'createdAt'>) => void;
   updateTrade: (id: string, trade: Partial<Trade>) => void;
@@ -71,8 +80,32 @@ const THEME_STORAGE_KEY = 'trade_diary_theme_v4';
 const RULES_STORAGE_KEY = 'trade_diary_rules_v4';
 const STRATEGIES_STORAGE_KEY = 'trade_diary_strategies_v4';
 const CHECKLIST_STORAGE_KEY = 'trade_diary_checklist_v4';
+const AUTH_STORAGE_KEY = 'trade_diary_auth_v4';
+const PROFILE_STORAGE_KEY = 'trade_diary_profile_v4';
+
+const DEFAULT_PROFILE: UserProfile = {
+  name: 'Anoop Negi',
+  email: 'anonegi5678@gmail.com',
+  tradingStyle: 'Intraday Options Buyer',
+  initialCapital: 100000,
+  bio: 'NSE & BSE F&O Index Trader specializing in Nifty and BankNifty setups.'
+};
 
 export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
+  });
+
+  // Profile state
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return DEFAULT_PROFILE;
+  });
+
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem(THEME_STORAGE_KEY) as 'dark' | 'light') || 'dark';
@@ -125,6 +158,34 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [dateFilter, setDateFilter] = useState<string>('August 2026');
   const [ticker, setTicker] = useState<MarketTickerItem[]>(INITIAL_TICKER);
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
+
+  // Login handler
+  const login = (email: string) => {
+    setIsAuthenticated(true);
+    localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+    if (email) {
+      setUserProfile(prev => {
+        const next = { ...prev, email };
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    }
+  };
+
+  // Logout handler
+  const logout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  };
+
+  // Update profile handler
+  const updateUserProfile = (fields: Partial<UserProfile>) => {
+    setUserProfile(prev => {
+      const next = { ...prev, ...fields };
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Initial cloud fetch on startup
   useEffect(() => {
@@ -369,6 +430,11 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <TradeContext.Provider
       value={{
+        isAuthenticated,
+        login,
+        logout,
+        userProfile,
+        updateUserProfile,
         trades,
         addTrade,
         updateTrade,

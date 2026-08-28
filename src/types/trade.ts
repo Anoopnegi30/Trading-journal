@@ -5,6 +5,15 @@ export type TradeType = 'Option Buying' | 'Option Selling' | 'Equity / Futures';
 export type TradeOutcome = 'Full Success' | 'Partial Success' | 'Loss' | 'Mistake' | 'Breakeven';
 export type EmotionType = 'Calm' | 'Disciplined' | 'Confident' | 'FOMO' | 'Greed' | 'Revenge' | 'Anxious' | 'Impatient';
 
+export interface UserProfile {
+  name: string;
+  email: string;
+  tradingStyle: string;
+  initialCapital: number;
+  phone?: string;
+  bio?: string;
+}
+
 export interface Trade {
   id: string;
   date: string; // YYYY-MM-DD

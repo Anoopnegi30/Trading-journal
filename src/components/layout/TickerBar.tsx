@@ -10,17 +10,23 @@ import {
   User, 
   LogOut, 
   Share2,
-  RotateCcw
+  RotateCcw,
+  Edit3,
+  Building
 } from 'lucide-react';
 import { BrokerModal } from '../profile/BrokerModal';
 import { ShareJournalModal } from '../profile/ShareJournalModal';
+import { EditProfileModal } from '../profile/EditProfileModal';
 
 export const TickerBar: React.FC = () => {
-  const { ticker, theme, toggleTheme, resetToSampleData } = useTradeContext();
+  const { ticker, theme, toggleTheme, resetToSampleData, userProfile, logout } = useTradeContext();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showBrokerModal, setShowBrokerModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+
+  const initial = (userProfile.name || 'A').charAt(0).toUpperCase();
 
   return (
     <>
@@ -69,7 +75,7 @@ export const TickerBar: React.FC = () => {
           {/* Settings Button */}
           <button
             onClick={() => setShowSettingsModal(!showSettingsModal)}
-            className="p-2 rounded-xl text-slate-400 hover:text-white light:hover:text-slate-900 hover:bg-[#16223d] light:hover:bg-slate-100 border border-transparent hover:border-[#23355b] transition-all"
+            className="p-2 rounded-xl text-slate-400 hover:text-white light:hover:text-slate-900 hover:bg-[#16223b] light:hover:bg-slate-100 border border-transparent hover:border-[#23355b] transition-all cursor-pointer"
             title="Settings & Data Management"
           >
             <Settings className="w-4 h-4" />
@@ -97,17 +103,17 @@ export const TickerBar: React.FC = () => {
             />
           </button>
 
-          {/* Profile Dropdown matching screenshot 1 */}
+          {/* Profile Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center gap-2.5 p-1 pr-2.5 rounded-xl hover:bg-[#16223d] light:hover:bg-slate-100 transition-all border border-transparent hover:border-[#23355b]"
+              className="flex items-center gap-2.5 p-1 pr-2.5 rounded-xl hover:bg-[#16223b] light:hover:bg-slate-100 transition-all border border-transparent hover:border-[#23355b] cursor-pointer"
             >
               <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs ring-2 ring-blue-500/30">
-                P
+                {initial}
               </div>
               <span className="text-xs font-semibold text-slate-200 light:text-slate-800 hidden md:inline">
-                Pratyay Prakash
+                {userProfile.name}
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
@@ -115,19 +121,30 @@ export const TickerBar: React.FC = () => {
             {showProfileMenu && (
               <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3 py-2 border-b border-[#1e2942] light:border-slate-100 mb-1">
-                  <p className="text-xs font-semibold text-white light:text-slate-900">Pratyay Prakash</p>
-                  <p className="text-[11px] text-slate-400 truncate">anonegi5678@gmail.com</p>
+                  <p className="text-xs font-semibold text-white light:text-slate-900">{userProfile.name}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{userProfile.email}</p>
                 </div>
+
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    setShowEditProfileModal(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-[#1a2744] light:hover:bg-slate-100 rounded-xl transition-all cursor-pointer font-medium"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-blue-400" />
+                  Edit Profile Details
+                </button>
 
                 <button
                   onClick={() => {
                     setShowProfileMenu(false);
                     setShowBrokerModal(true);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-[#1a2744] light:hover:bg-slate-100 rounded-xl transition-all"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-[#1a2744] light:hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
                 >
-                  <User className="w-3.5 h-3.5 text-blue-400" />
-                  Profile & Brokers
+                  <Building className="w-3.5 h-3.5 text-purple-400" />
+                  Broker Integrations
                 </button>
 
                 <button
@@ -135,28 +152,20 @@ export const TickerBar: React.FC = () => {
                     setShowProfileMenu(false);
                     setShowShareModal(true);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-[#1a2744] light:hover:bg-slate-100 rounded-xl transition-all"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-[#1a2744] light:hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
                 >
                   <Share2 className="w-3.5 h-3.5 text-emerald-400" />
                   Share Journal
                 </button>
 
-                <button
-                  onClick={() => {
-                    resetToSampleData();
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 light:text-slate-700 hover:bg-[#1a2744] light:hover:bg-slate-100 rounded-xl transition-all"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-                  Reset Sample Data
-                </button>
-
                 <div className="border-t border-[#1e2942] light:border-slate-100 my-1" />
 
                 <button
-                  onClick={() => setShowProfileMenu(false)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer font-bold"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   Logout
@@ -176,40 +185,32 @@ export const TickerBar: React.FC = () => {
                 </h3>
                 <button
                   onClick={() => setShowSettingsModal(false)}
-                  className="text-slate-400 hover:text-white text-sm font-semibold"
+                  className="text-slate-400 hover:text-white text-sm font-semibold cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
-
-              <div className="space-y-4 text-xs text-slate-300 light:text-slate-600">
-                <div className="p-3.5 rounded-xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] light:border-slate-200 space-y-2">
-                  <p className="font-semibold text-slate-200 light:text-slate-800">Account / Deployment</p>
-                  <p>Email: <span className="text-blue-400 font-mono">anonegi5678@gmail.com</span></p>
-                  <p>Storage: <span className="text-emerald-400 font-mono">Browser LocalStorage (Encrypted)</span></p>
-                  <p>Cloud Sync: <span className="text-emerald-400">Ready for Cloudflare Pages</span></p>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] light:border-slate-200">
-                  <p className="font-semibold text-slate-200 light:text-slate-800 mb-2">Data Management</p>
-                  <button
-                    onClick={() => {
-                      resetToSampleData();
-                      setShowSettingsModal(false);
-                    }}
-                    className="w-full py-2 px-3 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-all font-medium flex items-center justify-center gap-2"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" /> Restore Default Mock Data
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end">
+              <p className="text-xs text-slate-400 mb-4">
+                Manage your trading journal data and Cloudflare live database synchronization.
+              </p>
+              <div className="space-y-3">
                 <button
-                  onClick={() => setShowSettingsModal(false)}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-medium text-xs hover:bg-blue-500 transition-all"
+                  onClick={() => {
+                    setShowSettingsModal(false);
+                    setShowEditProfileModal(true);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2"
                 >
-                  Close
+                  <User className="w-4 h-4" /> Edit Profile & Capital
+                </button>
+                <button
+                  onClick={() => {
+                    resetToSampleData();
+                    setShowSettingsModal(false);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#16223b] hover:bg-rose-900/30 text-rose-400 font-semibold text-xs border border-[#23355b] hover:border-rose-700/50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" /> Reset / Clear All Journal Data
                 </button>
               </div>
             </div>
@@ -217,11 +218,21 @@ export const TickerBar: React.FC = () => {
         )}
       </header>
 
-      {/* Profile & Broker Modal */}
-      <BrokerModal isOpen={showBrokerModal} onClose={() => setShowBrokerModal(false)} />
+      {/* Modals */}
+      <EditProfileModal
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
+      />
 
-      {/* Share Journal Modal */}
-      <ShareJournalModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} />
+      <BrokerModal
+        isOpen={showBrokerModal}
+        onClose={() => setShowBrokerModal(false)}
+      />
+
+      <ShareJournalModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
     </>
   );
 };
