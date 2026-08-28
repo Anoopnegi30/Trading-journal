@@ -43,6 +43,9 @@ interface TradeContextType {
   
   isNewTradeModalOpen: boolean;
   setIsNewTradeModalOpen: (open: boolean) => void;
+
+  editingTrade: Trade | null;
+  setEditingTrade: (trade: Trade | null) => void;
   
   selectedTrade: Trade | null;
   setSelectedTrade: (trade: Trade | null) => void;
@@ -166,8 +169,9 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return INITIAL_CHECKLIST;
   });
 
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<NavTab>('trades');
   const [isNewTradeModalOpen, setIsNewTradeModalOpen] = useState<boolean>(false);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [marketFilter, setMarketFilter] = useState<string>('Indian');
   const [dateFilter, setDateFilter] = useState<string>('August 2026');
@@ -389,6 +393,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ExitPrice: t.exitPrice,
       Quantity: t.quantity,
       Fees: t.fees,
+      GrossPnL: t.pnl,
       NetPnL: t.netPnl,
       Strategy: t.strategy,
       Emotion: t.emotion,
@@ -498,6 +503,8 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setActiveTab,
         isNewTradeModalOpen,
         setIsNewTradeModalOpen,
+        editingTrade,
+        setEditingTrade,
         selectedTrade,
         setSelectedTrade,
         theme,

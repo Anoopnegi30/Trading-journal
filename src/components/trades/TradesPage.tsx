@@ -33,6 +33,8 @@ export const TradesPage: React.FC = () => {
     trades, 
     deleteTrade, 
     setIsNewTradeModalOpen, 
+    editingTrade,
+    setEditingTrade,
     setSelectedTrade,
     exportCsv,
     importCsv,
@@ -394,9 +396,19 @@ export const TradesPage: React.FC = () => {
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => {
+                              setEditingTrade(trade);
+                              setIsNewTradeModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 transition-colors cursor-pointer"
+                            title="Edit Trade Details & Psychology"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => setSelectedTrade(trade)}
-                            className="p-1.5 rounded-lg bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-white light:hover:text-slate-900 transition-colors"
-                            title="View Details & Psychology"
+                            className="p-1.5 rounded-lg bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-white light:hover:text-slate-900 transition-colors cursor-pointer"
+                            title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -406,7 +418,7 @@ export const TradesPage: React.FC = () => {
                                 deleteTrade(trade.id);
                               }
                             }}
-                            className="p-1.5 rounded-lg bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-rose-400 transition-colors"
+                            className="p-1.5 rounded-lg bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
                             title="Delete Trade"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
