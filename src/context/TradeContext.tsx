@@ -14,6 +14,7 @@ export type NavTab =
   | 'ai-summarizer' 
   | 'reports' 
   | 'risk-management' 
+  | 'challenge' 
   | 'calendar';
 
 interface TradeContextType {

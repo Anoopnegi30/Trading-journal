@@ -12,6 +12,7 @@ import { RulesPage } from './components/rules/RulesPage';
 import { AiSummarizerPage } from './components/ai/AiSummarizerPage';
 import { RiskManagementPage } from './components/risk/RiskManagementPage';
 import { ReportsPage } from './components/reports/ReportsPage';
+import { ChallengePage } from './components/challenge/ChallengePage';
 import { NewTradeModal } from './components/modal/NewTradeModal';
 import { TradeDetailModal } from './components/trades/TradeDetailModal';
 import { AiChatWidget } from './components/ai/AiChatWidget';
@@ -43,6 +44,8 @@ const MainContent: React.FC = () => {
         return <RiskManagementPage />;
       case 'reports':
         return <ReportsPage />;
+      case 'challenge':
+        return <ChallengePage />;
       default:
         return <DashboardPage />;
     }
