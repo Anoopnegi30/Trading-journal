@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem, TradingStrategy, UserProfile } from '../types/trade';
+import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem, TradingStrategy, UserProfile, TradingChallenge } from '../types/trade';
 import { INITIAL_TRADES, INITIAL_RULES, INITIAL_CHECKLIST, INITIAL_TICKER, INITIAL_STRATEGIES } from '../utils/mockData';
 import { fetchCloudTrades, saveTradeToCloud, syncAllTradesToCloud, deleteTradeFromCloud, syncDhanTrades } from '../utils/cloudSync';
 import confetti from 'canvas-confetti';
@@ -72,6 +72,11 @@ interface TradeContextType {
   checklist: ChecklistItem[];
   toggleChecklist: (id: string) => void;
   resetChecklist: () => void;
+
+  // Challenge state
+  challenge: TradingChallenge;
+  saveChallenge: (challenge: TradingChallenge) => void;
+  resetChallenge: () => void;
   
   isCloudSynced: boolean;
   syncToCloud: () => Promise<void>;
@@ -91,13 +96,28 @@ const CHECKLIST_STORAGE_KEY = 'trade_diary_checklist_v4';
 const AUTH_STORAGE_KEY = 'trade_diary_auth_v4';
 const PROFILE_STORAGE_KEY = 'trade_diary_profile_v4';
 const DHAN_CREDS_STORAGE_KEY = 'trade_diary_dhan_creds_v4';
+const CHALLENGE_STORAGE_KEY = 'trade_diary_challenge_v4';
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Anoop Negi',
   email: 'anonegi5678@gmail.com',
   tradingStyle: 'Intraday Options Buyer',
   initialCapital: 100000,
+  defaultFee: 55,
   bio: 'NSE & BSE F&O Index Trader specializing in Nifty and BankNifty setups.'
+};
+
+const DEFAULT_CHALLENGE: TradingChallenge = {
+  id: 'challenge-aug-2026',
+  name: 'August 2026 Capital Growth Challenge',
+  startingCapital: 100000,
+  targetCapital: 200000,
+  startDate: '2026-08-01',
+  targetDays: 30,
+  maxRiskPerTrade: 2,
+  maxDailyLoss: 3000,
+  isActive: true,
+  notes: 'Disciplined capital growth challenge with strict risk control.'
 };
 
 export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -113,6 +133,15 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try { return JSON.parse(saved); } catch (e) {}
     }
     return DEFAULT_PROFILE;
+  });
+
+  // Challenge state (Persistent)
+  const [challenge, setChallenge] = useState<TradingChallenge>(() => {
+    const saved = localStorage.getItem(CHALLENGE_STORAGE_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return DEFAULT_CHALLENGE;
   });
 
   // Dhan Credentials state
@@ -206,6 +235,17 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  // Save Challenge handler
+  const saveChallenge = (newChallenge: TradingChallenge) => {
+    setChallenge(newChallenge);
+    localStorage.setItem(CHALLENGE_STORAGE_KEY, JSON.stringify(newChallenge));
+  };
+
+  const resetChallenge = () => {
+    setChallenge(DEFAULT_CHALLENGE);
+    localStorage.setItem(CHALLENGE_STORAGE_KEY, JSON.stringify(DEFAULT_CHALLENGE));
+  };
+
   // Save Dhan Credentials handler
   const saveDhanCredentials = (clientId: string, accessToken: string) => {
     const creds = { clientId: clientId.trim(), accessToken: accessToken.trim() };
@@ -224,7 +264,6 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const res = await syncDhanTrades(cId, aToken);
     if (res.success && res.trades && res.trades.length > 0) {
-      // Merge unique trades
       setTrades(prev => {
         const existingIds = new Set(prev.map(t => t.id));
         const newTrades = res.trades!.filter(t => !existingIds.has(t.id));
@@ -269,6 +308,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklist));
   }, [checklist]);
+
+  useEffect(() => {
+    localStorage.setItem(CHALLENGE_STORAGE_KEY, JSON.stringify(challenge));
+  }, [challenge]);
 
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
@@ -319,7 +362,6 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTrades(prev => [newTrade, ...prev]);
     saveTradeToCloud(newTrade);
 
-    // Celebrate if profitable
     if (newTrade.netPnl > 0) {
       try {
         confetti({
@@ -492,6 +534,9 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         logout,
         userProfile,
         updateUserProfile,
+        challenge,
+        saveChallenge,
+        resetChallenge,
         dhanCredentials,
         saveDhanCredentials,
         syncFromDhan,

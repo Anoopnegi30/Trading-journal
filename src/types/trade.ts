@@ -121,3 +121,16 @@ export interface ChecklistItem {
   category: 'Pre-Market' | 'Execution' | 'Post-Market' | string;
   completed: boolean;
 }
+
+export interface TradingChallenge {
+  id: string;
+  name: string;
+  startingCapital: number;
+  targetCapital: number;
+  startDate: string;
+  targetDays: number;
+  maxRiskPerTrade: number;
+  maxDailyLoss: number;
+  isActive: boolean;
+  notes?: string;
+}
