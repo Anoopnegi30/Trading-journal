@@ -1,6 +1,7 @@
 export type MarketType = 'Indian' | 'Crypto' | 'Forex' | 'US Stocks';
 export type TradeDuration = 'Intraday' | 'Swing' | 'Position' | 'Scalp';
 export type TradeDirection = 'Long' | 'Short';
+export type TradeType = 'Option Buying' | 'Option Selling' | 'Equity / Futures';
 export type TradeOutcome = 'Full Success' | 'Partial Success' | 'Loss' | 'Mistake' | 'Breakeven';
 export type EmotionType = 'Calm' | 'Disciplined' | 'Confident' | 'FOMO' | 'Greed' | 'Revenge' | 'Anxious' | 'Impatient';
 
@@ -10,6 +11,7 @@ export interface Trade {
   time?: string;
   marketType: MarketType;
   duration: TradeDuration;
+  tradeType?: TradeType;
   symbol: string;
   direction: TradeDirection;
   entryPrice: number;
@@ -87,7 +89,7 @@ export interface TradingRule {
   id: string;
   title: string;
   description: string;
-  category: 'Risk' | 'Execution' | 'Psychology' | 'General';
+  category: 'Risk' | 'Execution' | 'Psychology' | 'General' | 'Analysis' | 'Exit';
   mandatory: boolean;
   active: boolean;
 }
@@ -95,6 +97,6 @@ export interface TradingRule {
 export interface ChecklistItem {
   id: string;
   title: string;
-  category: 'Pre-Market' | 'Execution' | 'Post-Market';
+  category: 'Pre-Market' | 'Execution' | 'Post-Market' | string;
   completed: boolean;
 }

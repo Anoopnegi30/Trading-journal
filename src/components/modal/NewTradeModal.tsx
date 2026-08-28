@@ -1,73 +1,82 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useTradeContext } from '../../context/TradeContext';
-import { MarketType, TradeDuration, TradeDirection, TradeOutcome, EmotionType } from '../../types/trade';
+import { 
+  MarketType, 
+  TradeDuration, 
+  TradeDirection, 
+  TradeOutcome, 
+  EmotionType,
+  TradeType 
+} from '../../types/trade';
 import { formatINR } from '../../utils/calculations';
-import {
-  X,
-  RotateCcw,
-  Save,
-  Info,
-  Brain,
-  UploadCloud,
-  Check,
+import { 
+  X, 
+  Upload, 
+  Brain, 
+  Sliders, 
+  CheckCircle2, 
+  AlertCircle, 
+  TrendingUp, 
+  TrendingDown, 
+  ShieldCheck,
   Search,
-  Trash2
+  Plus,
+  HelpCircle,
+  ShoppingBag,
+  Zap
 } from 'lucide-react';
 
 export const NewTradeModal: React.FC = () => {
-  const { isNewTradeModalOpen, setIsNewTradeModalOpen, addTrade } = useTradeContext();
-
+  const { isNewTradeModalOpen, setIsNewTradeModalOpen, addTrade, rules } = useTradeContext();
+  
+  // Navigation tabs in modal
   const [activeSubTab, setActiveSubTab] = useState<'general' | 'psychology'>('general');
   const [isNoTradeDay, setIsNoTradeDay] = useState(false);
 
-  // General Form state
-  const [duration, setDuration] = useState<TradeDuration>('Intraday');
+  // General Tab State
   const [marketType, setMarketType] = useState<MarketType>('Indian');
-  const [symbol, setSymbol] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [direction, setDirection] = useState<TradeDirection>('Long');
-  const [entryPrice, setEntryPrice] = useState<number | ''>('');
-  const [exitPrice, setExitPrice] = useState<number | ''>('');
-  const [quantity, setQuantity] = useState<number | ''>('');
+  const [duration, setDuration] = useState<TradeDuration>('Intraday');
+  const [tradeType, setTradeType] = useState<TradeType>('Option Buying');
+  const [symbol, setSymbol] = useState('NIFTY 50');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [direction, setDirection] = useState<TradeDirection>('Short');
+  const [entryPrice, setEntryPrice] = useState<number | ''>(110);
+  const [exitPrice, setExitPrice] = useState<number | ''>(120);
+  const [quantity, setQuantity] = useState<number | ''>(65);
+  const [fees, setFees] = useState<number | ''>(20);
   const [stopLoss, setStopLoss] = useState<number | ''>('');
   const [target, setTarget] = useState<number | ''>('');
-  const [fees, setFees] = useState<number | ''>(20);
   const [strategy, setStrategy] = useState('Breakout');
   const [outcome, setOutcome] = useState<TradeOutcome>('Full Success');
   const [analysis, setAnalysis] = useState('');
-  
-  // Rules Followed (Search & Select)
-  const [ruleSearch, setRuleSearch] = useState('');
-  const [isRuleDropdownOpen, setIsRuleDropdownOpen] = useState(false);
   const [selectedRules, setSelectedRules] = useState<string[]>([
     '5-10 points SL in nifty',
     'stop loss trailing'
   ]);
-
-  // Screenshot Upload State
+  const [ruleSearchQuery, setRuleSearchQuery] = useState('');
+  const [showRuleDropdown, setShowRuleDropdown] = useState(false);
   const [uploadedScreenshot, setUploadedScreenshot] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Psychology Form state (Image 4 exact match)
-  const [entryConfidence, setEntryConfidence] = useState<number>(5); // 1-10
-  const [satisfactionRating, setSatisfactionRating] = useState<number>(5); // 1-10
-  const [emotionalState, setEmotionalState] = useState<string>('Disciplined Execution');
+  // Psychology Tab State (Exact match to screenshot 4)
+  const [entryConfidence, setEntryConfidence] = useState<number>(5); // 1-10 slider
+  const [satisfactionRating, setSatisfactionRating] = useState<number>(5); // 1-10 slider
+  const [emotionalState, setEmotionalState] = useState<string>('Select emotional state');
   const [selectedMistakes, setSelectedMistakes] = useState<string[]>([]);
   const [lessonLearned, setLessonLearned] = useState('');
 
-  if (!isNewTradeModalOpen) return null;
-
-  // Available rules matching screenshot 2
-  const predefinedRules = [
+  // Rules list for search dropdown
+  const allAvailableRules = [
     'avoid trading after 3 winning strik',
     'book partial quantity on TP',
     'fixed quantity ( 600 quantity in nifty )',
     '5-10 points SL in nifty',
     'Maximum 2 trade in a day',
-    'stop loss trailing'
+    'stop loss trailing',
+    'Wait for 15-min candle close',
+    'Never risk > 2% per trade'
   ];
 
-  // Mistakes list matching screenshot 4
+  // Mistakes list matching screenshots
   const allMistakes = [
     'Overtrading',
     'Revenge Trading',
@@ -91,11 +100,15 @@ export const NewTradeModal: React.FC = () => {
   const numFees = Number(fees) || 0;
   const totalAmount = numEntry * numQty;
 
+  // P&L calculation:
+  // In Option Buying (CE or PE): Entry is buy premium, Exit is sell premium.
+  // When premium badhta hai (exit > entry), it's ALWAYS a profit!
   let grossPnl = 0;
   if (numEntry > 0 && numExit > 0 && numQty > 0) {
-    if (direction === 'Long') {
+    if (tradeType === 'Option Buying') {
       grossPnl = (numExit - numEntry) * numQty;
     } else {
+      // Option Selling / Futures Shorting
       grossPnl = (numEntry - numExit) * numQty;
     }
   }
@@ -140,13 +153,18 @@ export const NewTradeModal: React.FC = () => {
   };
 
   const handleReset = () => {
-    setSymbol('');
+    setSymbol('NIFTY 50');
     setEntryPrice('');
     setExitPrice('');
     setQuantity('');
+    setFees(20);
     setStopLoss('');
     setTarget('');
     setAnalysis('');
+    setSelectedRules([]);
+    setEntryConfidence(5);
+    setSatisfactionRating(5);
+    setEmotionalState('Select emotional state');
     setSelectedMistakes([]);
     setLessonLearned('');
     setUploadedScreenshot(null);
@@ -162,6 +180,7 @@ export const NewTradeModal: React.FC = () => {
         time: '09:15',
         marketType,
         duration: 'Intraday',
+        tradeType,
         symbol: 'NO_TRADE',
         direction: 'Long',
         entryPrice: 0,
@@ -199,6 +218,7 @@ export const NewTradeModal: React.FC = () => {
       time: '10:00',
       marketType,
       duration,
+      tradeType,
       symbol: symbol.toUpperCase().trim(),
       direction,
       entryPrice: numEntry,
@@ -230,11 +250,13 @@ export const NewTradeModal: React.FC = () => {
     handleReset();
   };
 
+  if (!isNewTradeModalOpen) return null;
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[95vh] overflow-y-auto">
         
-        {/* Modal Header matching screenshots */}
+        {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-[#1e2942] light:border-slate-100 pb-3">
           <div>
             <h2 className="text-lg font-black text-white light:text-slate-900 tracking-tight">
@@ -248,14 +270,12 @@ export const NewTradeModal: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* "No Trade Day" toggle */}
             <div className="flex items-center gap-2 bg-[#16223b] light:bg-slate-100 px-3 py-1.5 rounded-xl border border-[#23355b] light:border-slate-200">
-              <span className="text-xs font-semibold text-slate-300 light:text-slate-700">
-                No Trade Day
-              </span>
+              <span className="text-xs font-semibold text-slate-300 light:text-slate-700">No Trade Day</span>
               <button
                 type="button"
                 onClick={() => setIsNoTradeDay(!isNoTradeDay)}
                 className={`w-9 h-5 rounded-full p-0.5 transition-colors ${
-                  isNoTradeDay ? 'bg-blue-600' : 'bg-slate-700 light:bg-slate-300'
+                  isNoTradeDay ? 'bg-blue-600' : 'bg-slate-700'
                 }`}
               >
                 <div
@@ -275,27 +295,27 @@ export const NewTradeModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs: General vs Psychology */}
-        <div className="flex border-b border-[#1e2942] light:border-slate-200">
+        {/* Tab Headers: General vs Psychology */}
+        <div className="grid grid-cols-2 gap-2 bg-[#16223b] light:bg-slate-100 p-1 rounded-2xl border border-[#23355b] light:border-slate-200">
           <button
             type="button"
             onClick={() => setActiveSubTab('general')}
-            className={`flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
+            className={`py-2 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
               activeSubTab === 'general'
-                ? 'border-blue-500 text-blue-400 bg-blue-500/5'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Info className="w-4 h-4" />
+            <span>ℹ️</span>
             General
           </button>
           <button
             type="button"
             onClick={() => setActiveSubTab('psychology')}
-            className={`flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
+            className={`py-2 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
               activeSubTab === 'psychology'
-                ? 'border-blue-500 text-blue-400 bg-blue-500/5'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <Brain className="w-4 h-4" />
@@ -308,34 +328,69 @@ export const NewTradeModal: React.FC = () => {
           {activeSubTab === 'general' && (
             <div className="space-y-4 text-xs">
               
-              {/* Trade Duration Toggle */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
-                  Trade Duration <span className="text-slate-500 font-normal">Select whether this is an intraday or swing trade</span>
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDuration('Intraday')}
-                    className={`flex-1 py-2 px-4 rounded-xl font-bold transition-all ${
-                      duration === 'Intraday'
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                        : 'bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-slate-200 border border-[#23355b]'
-                    }`}
-                  >
-                    ⏱️ Intraday
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDuration('Swing')}
-                    className={`flex-1 py-2 px-4 rounded-xl font-bold transition-all ${
-                      duration === 'Swing'
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                        : 'bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-slate-200 border border-[#23355b]'
-                    }`}
-                  >
-                    📅 Swing
-                  </button>
+              {/* Trade Instrument / Style Toggle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                    Trade Instrument Style
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTradeType('Option Buying')}
+                      className={`flex-1 py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
+                        tradeType === 'Option Buying'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                          : 'bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-slate-200 border border-[#23355b]'
+                      }`}
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      Option Buying (Buy Low, Sell High)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTradeType('Option Selling')}
+                      className={`flex-1 py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
+                        tradeType === 'Option Selling'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                          : 'bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-slate-200 border border-[#23355b]'
+                      }`}
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      Option Selling / Short
+                    </button>
+                  </div>
+                </div>
+
+                {/* Trade Duration Toggle */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                    Trade Duration
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDuration('Intraday')}
+                      className={`flex-1 py-2 px-4 rounded-xl font-bold transition-all ${
+                        duration === 'Intraday'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                          : 'bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-slate-200 border border-[#23355b]'
+                      }`}
+                    >
+                      ⏱️ Intraday
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDuration('Swing')}
+                      className={`flex-1 py-2 px-4 rounded-xl font-bold transition-all ${
+                        duration === 'Swing'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                          : 'bg-[#16223b] light:bg-slate-100 text-slate-400 hover:text-slate-200 border border-[#23355b]'
+                      }`}
+                    >
+                      📅 Swing
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -448,14 +503,15 @@ export const NewTradeModal: React.FC = () => {
                   <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
                     P&L Amount (₹)
                   </label>
-                  <div className={`w-full py-2 px-3 rounded-xl border font-mono font-bold ${
+                  <div className={`w-full py-2 px-3 rounded-xl border font-mono font-bold flex items-center justify-between ${
                     netPnl > 0
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                       : netPnl < 0
                       ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
                       : 'bg-[#16223b] border-[#23355b] text-slate-400'
                   }`}>
-                    {formatINR(netPnl)}
+                    <span>{formatINR(netPnl)}</span>
+                    {netPnl > 0 && <span className="text-[10px] bg-emerald-500/20 px-1 rounded">PROFIT</span>}
                   </div>
                 </div>
 
@@ -474,7 +530,7 @@ export const NewTradeModal: React.FC = () => {
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
-                    Direction <span className="text-rose-500">*</span>
+                    Direction (View) <span className="text-rose-500">*</span>
                   </label>
                   <div className="flex gap-1">
                     <button
@@ -531,7 +587,7 @@ export const NewTradeModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 4: Strategy & Outcome Summary */}
+              {/* Row 4: Strategy, Outcome */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
@@ -540,7 +596,7 @@ export const NewTradeModal: React.FC = () => {
                   <select
                     value={strategy}
                     onChange={(e) => setStrategy(e.target.value)}
-                    className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] rounded-xl px-3 py-2 text-slate-200 focus:outline-none"
+                    className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3 py-2 text-slate-200 light:text-slate-900 focus:outline-none"
                   >
                     <option value="Breakout">Breakout</option>
                     <option value="Reversal">Reversal</option>
@@ -550,10 +606,6 @@ export const NewTradeModal: React.FC = () => {
                     <option value="Fibonacci retracement">Fibonacci retracement</option>
                     <option value="9&15 Ema">9&15 Ema</option>
                     <option value="Other">Other</option>
-                    <option value="9&15 Ema">9&15 Ema</option>
-                    <option value="Pullback">Pullback</option>
-                    <option value="Support & Resistance">Support & Resistance</option>
-                    <option value="Scalping">Scalping</option>
                   </select>
                 </div>
 
@@ -564,18 +616,18 @@ export const NewTradeModal: React.FC = () => {
                   <select
                     value={outcome}
                     onChange={(e) => setOutcome(e.target.value as TradeOutcome)}
-                    className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] rounded-xl px-3 py-2 text-slate-200 focus:outline-none"
+                    className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3 py-2 text-slate-200 light:text-slate-900 focus:outline-none"
                   >
                     <option value="Full Success">Full Success</option>
                     <option value="Partial Success">Partial Success</option>
+                    <option value="Breakeven">Breakeven</option>
                     <option value="Loss">Loss</option>
                     <option value="Mistake">Mistake</option>
-                    <option value="Breakeven">Breakeven</option>
                   </select>
                 </div>
               </div>
 
-              {/* Trade Analysis */}
+              {/* Trade Analysis Textarea */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
                   Trade Analysis
@@ -585,136 +637,130 @@ export const NewTradeModal: React.FC = () => {
                   placeholder="Why did you take this trade? What was your analysis?"
                   value={analysis}
                   onChange={(e) => setAnalysis(e.target.value)}
-                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] rounded-xl p-3 text-slate-200 focus:outline-none"
+                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl p-3 text-slate-200 light:text-slate-900 focus:outline-none"
                 />
               </div>
 
-              {/* Rules Followed (Search or Add Rules Dropdown matching screenshot 2) */}
-              <div className="relative">
-                <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
+              {/* Rules Followed Tag Selector */}
+              <div className="space-y-1.5 relative">
+                <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700">
                   Rules Followed
                 </label>
                 
-                <div
-                  onClick={() => setIsRuleDropdownOpen(!isRuleDropdownOpen)}
-                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] rounded-xl p-2.5 cursor-pointer flex flex-wrap items-center gap-1.5 min-h-[42px]"
+                {/* Selected Rules Badges Container */}
+                <div 
+                  onClick={() => setShowRuleDropdown(!showRuleDropdown)}
+                  className="min-h-[42px] p-2 bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl flex flex-wrap gap-1.5 items-center cursor-pointer"
                 >
-                  {selectedRules.length === 0 && (
-                    <span className="text-slate-500 text-xs">Search or add rules...</span>
+                  {selectedRules.length === 0 ? (
+                    <span className="text-slate-400 text-xs">Search & select trading rules followed...</span>
+                  ) : (
+                    selectedRules.map((rule) => (
+                      <span
+                        key={rule}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600/30 text-blue-300 border border-blue-500/40 flex items-center gap-1.5"
+                      >
+                        {rule}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRule(rule);
+                          }}
+                          className="hover:text-rose-400 font-bold"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))
                   )}
-                  {selectedRules.map(r => (
-                    <span
-                      key={r}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleRule(r);
-                      }}
-                    >
-                      {r}
-                      <span className="text-blue-400 hover:text-rose-400 font-bold ml-1">✕</span>
-                    </span>
-                  ))}
                 </div>
 
-                {isRuleDropdownOpen && (
-                  <div className="absolute z-30 w-full mt-1 rounded-2xl bg-[#111a2e] border border-[#1e2942] shadow-2xl p-2 space-y-1">
-                    <input
-                      type="text"
-                      placeholder="Type rule to filter..."
-                      value={ruleSearch}
-                      onChange={(e) => setRuleSearch(e.target.value)}
-                      className="w-full bg-[#16223b] text-xs px-3 py-1.5 rounded-lg border border-[#23355b] text-white focus:outline-none mb-1"
-                    />
-                    <div className="max-h-40 overflow-y-auto space-y-1">
-                      {predefinedRules
-                        .filter(r => r.toLowerCase().includes(ruleSearch.toLowerCase()))
-                        .map(r => {
-                          const isSel = selectedRules.includes(r);
-                          return (
-                            <div
-                              key={r}
-                              onClick={() => toggleRule(r)}
-                              className={`px-3 py-2 rounded-xl text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                                isSel ? 'bg-blue-600/30 text-blue-300' : 'hover:bg-[#16223b] text-slate-300'
-                              }`}
-                            >
-                              <span>{r}</span>
-                              {isSel && <Check className="w-3.5 h-3.5 text-blue-400" />}
-                            </div>
-                          );
-                        })}
+                {/* Dropdown Menu */}
+                {showRuleDropdown && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-[#111a2e] border border-[#23355b] rounded-2xl shadow-2xl p-2 space-y-1 max-h-48 overflow-y-auto">
+                    <div className="p-1.5">
+                      <input
+                        type="text"
+                        placeholder="Search rules..."
+                        value={ruleSearchQuery}
+                        onChange={(e) => setRuleSearchQuery(e.target.value)}
+                        className="w-full bg-[#16223b] border border-[#23355b] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                      />
                     </div>
+                    {allAvailableRules
+                      .filter(r => r.toLowerCase().includes(ruleSearchQuery.toLowerCase()))
+                      .map((rule) => {
+                        const isSelected = selectedRules.includes(rule);
+                        return (
+                          <div
+                            key={rule}
+                            onClick={() => toggleRule(rule)}
+                            className={`p-2 rounded-xl text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                              isSelected ? 'bg-blue-600/20 text-blue-300 font-bold' : 'hover:bg-[#16223b] text-slate-300'
+                            }`}
+                          >
+                            <span>{rule}</span>
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                          </div>
+                        );
+                      })}
                   </div>
                 )}
               </div>
 
-              {/* Trade Screenshots Drag & Drop Zone matching screenshot 3 */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
+              {/* Trade Screenshots Drag & Drop Upload Zone */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700">
                   Trade Screenshots
                 </label>
-                
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageSelect}
-                  accept="image/png, image/jpeg, image/jpg"
-                  className="hidden"
-                />
-
-                {uploadedScreenshot ? (
-                  <div className="relative rounded-2xl overflow-hidden border border-emerald-500/40 p-2 bg-[#0d1527] flex items-center gap-3">
-                    <img
-                      src={uploadedScreenshot}
-                      alt="Trade Chart Screenshot"
-                      className="w-20 h-16 object-cover rounded-xl border border-slate-700"
-                    />
-                    <div className="flex-1">
-                      <p className="font-bold text-white text-xs">Trade Screenshot Attached</p>
-                      <p className="text-[10px] text-emerald-400">Ready to save with trade record</p>
+                <div className="border-2 border-dashed border-[#23355b] light:border-slate-300 rounded-2xl p-4 text-center hover:border-blue-500/60 transition-colors bg-[#0d1527]/50 relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  {uploadedScreenshot ? (
+                    <div className="space-y-2">
+                      <img
+                        src={uploadedScreenshot}
+                        alt="Trade Preview"
+                        className="max-h-32 mx-auto rounded-xl object-contain border border-[#23355b]"
+                      />
+                      <p className="text-[11px] text-emerald-400 font-semibold">Screenshot attached (Click to change)</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setUploadedScreenshot(null)}
-                      className="p-2 rounded-xl text-rose-400 hover:bg-rose-500/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-[#23355b] hover:border-blue-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-[#131d35]/40 hover:bg-[#16223b]"
-                  >
-                    <UploadCloud className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                    <p className="font-bold text-xs text-white light:text-slate-800">
-                      Drag & drop your trade screenshots here
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Supports JPG, PNG (Max 5MB each)
-                    </p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex flex-col items-center justify-center space-y-1">
+                      <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-300">
+                        Drop &amp; drop your trade screenshot here
+                      </p>
+                      <p className="text-[10px] text-slate-500">Supports PNG, JPG (Max 5MB)</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
             </div>
           )}
 
-          {/* ===================== PSYCHOLOGY TAB (Image 4 exact match) ===================== */}
+          {/* ===================== PSYCHOLOGY TAB ===================== */}
           {activeSubTab === 'psychology' && (
-            <div className="space-y-4 text-xs">
+            <div className="space-y-5 text-xs">
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                {/* Left Column: Sliders & Emotional state */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                {/* Left Column: Sliders & Emotional State */}
                 <div className="space-y-4">
-                  {/* Entry Confidence Level (1-10) */}
-                  <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b]">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold text-slate-300 light:text-slate-800">
-                        Entry Confidence Level (1-10)
-                      </span>
-                      <span className="text-blue-400 font-black text-sm">{entryConfidence}</span>
+                  
+                  {/* Slider 1: Entry Confidence Level (1-10) */}
+                  <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-300 light:text-slate-700">Entry Confidence Level (1-10)</span>
+                      <span className="text-base font-black text-blue-400 font-mono">{entryConfidence}</span>
                     </div>
                     <input
                       type="range"
@@ -722,22 +768,20 @@ export const NewTradeModal: React.FC = () => {
                       max="10"
                       value={entryConfidence}
                       onChange={(e) => setEntryConfidence(Number(e.target.value))}
-                      className="w-full accent-blue-500 cursor-pointer"
+                      className="w-full h-2 bg-[#0d1527] rounded-lg appearance-none cursor-pointer accent-blue-500"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
                       <span>Low</span>
                       <span>Medium</span>
                       <span>High</span>
                     </div>
                   </div>
 
-                  {/* Satisfaction Rating (1-10) */}
-                  <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b]">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold text-slate-300 light:text-slate-800">
-                        Satisfaction Rating (1-10)
-                      </span>
-                      <span className="text-blue-400 font-black text-sm">{satisfactionRating}</span>
+                  {/* Slider 2: Satisfaction Rating (1-10) */}
+                  <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] space-y-2">
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-300 light:text-slate-700">Satisfaction Rating (1-10)</span>
+                      <span className="text-base font-black text-emerald-400 font-mono">{satisfactionRating}</span>
                     </div>
                     <input
                       type="range"
@@ -745,16 +789,16 @@ export const NewTradeModal: React.FC = () => {
                       max="10"
                       value={satisfactionRating}
                       onChange={(e) => setSatisfactionRating(Number(e.target.value))}
-                      className="w-full accent-blue-500 cursor-pointer"
+                      className="w-full h-2 bg-[#0d1527] rounded-lg appearance-none cursor-pointer accent-emerald-500"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
                       <span>Not Satisfied</span>
                       <span>Average</span>
                       <span>Satisfied</span>
                     </div>
                   </div>
 
-                  {/* Emotional State During Trade * */}
+                  {/* Emotional State Dropdown */}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
                       Emotional State During Trade <span className="text-rose-500">*</span>
@@ -764,58 +808,58 @@ export const NewTradeModal: React.FC = () => {
                       onChange={(e) => setEmotionalState(e.target.value)}
                       className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] rounded-xl px-3 py-2 text-slate-200 focus:outline-none"
                     >
-                      <option value="Disciplined Execution">Disciplined Execution</option>
-                      <option value="Calm & Relaxed">Calm & Relaxed</option>
+                      <option value="Select emotional state">Select emotional state</option>
+                      <option value="Calm & Disciplined">Calm & Disciplined</option>
                       <option value="Confident & Focused">Confident & Focused</option>
-                      <option value="FOMO Entry">FOMO Entry</option>
-                      <option value="Greed / Chasing Move">Greed / Chasing Move</option>
-                      <option value="Revenge / Angry">Revenge / Angry</option>
-                      <option value="Anxious & Hesitant">Anxious & Hesitant</option>
+                      <option value="FOMO (Fear of Missing Out)">FOMO (Fear of Missing Out)</option>
+                      <option value="Greedy / Overleveraged">Greedy / Overleveraged</option>
+                      <option value="Anxious & Impatient">Anxious & Impatient</option>
+                      <option value="Revenge Mindset">Revenge Mindset</option>
                     </select>
                   </div>
+
                 </div>
 
-                {/* Right Column: Mistakes Made Checklist (Image 4 exact match) */}
-                <div className="p-3.5 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b]">
-                  <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-2">
-                    Mistakes Made
+                {/* Right Column: Mistakes Checklist 2-Column Grid */}
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700">
+                    Mistakes Made <span className="text-slate-500 font-normal">(Select all that occurred)</span>
                   </label>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    {allMistakes.map(m => {
-                      const isChecked = selectedMistakes.includes(m);
+
+                  <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 no-scrollbar">
+                    {allMistakes.map((m) => {
+                      const isSelected = selectedMistakes.includes(m);
                       return (
-                        <label
+                        <button
+                          type="button"
                           key={m}
                           onClick={() => toggleMistake(m)}
-                          className={`flex items-center gap-2 p-2 rounded-xl border transition-all cursor-pointer ${
-                            isChecked
-                              ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-                              : 'bg-[#0d1527] light:bg-white border-[#1e2942] text-slate-300 hover:border-slate-600'
+                          className={`p-2.5 rounded-xl border text-left flex items-center justify-between text-[11px] font-bold transition-all ${
+                            isSelected
+                              ? m === 'No Mistakes'
+                                ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300'
+                                : 'bg-rose-600/20 border-rose-500/40 text-rose-300'
+                              : 'bg-[#16223b] light:bg-slate-50 border-[#23355b] text-slate-300 hover:border-slate-500'
                           }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {}}
-                            className="rounded accent-rose-500"
-                          />
-                          <span className="text-[11px] font-medium truncate">{m}</span>
-                        </label>
+                          <span className="truncate">{m}</span>
+                          {isSelected && <span className="text-xs">✓</span>}
+                        </button>
                       );
                     })}
                   </div>
                 </div>
+
               </div>
 
-              {/* Bottom: Lessons Learned Textarea (Image 4 exact match) */}
+              {/* Bottom: Lessons Learned Textarea */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-1">
                   Lessons Learned
                 </label>
                 <textarea
-                  rows={2}
-                  placeholder="What did you learn from this trade?"
+                  rows={3}
+                  placeholder="What did you learn from this trade? What will you do differently next time?"
                   value={lessonLearned}
                   onChange={(e) => setLessonLearned(e.target.value)}
                   className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] rounded-xl p-3 text-slate-200 focus:outline-none"
@@ -825,22 +869,19 @@ export const NewTradeModal: React.FC = () => {
             </div>
           )}
 
-          {/* Modal Footer */}
+          {/* Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#1e2942] light:border-slate-100">
             <button
               type="button"
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-slate-400 hover:text-white light:hover:text-slate-900 bg-[#16223b] light:bg-slate-100 text-xs font-semibold transition-colors"
+              onClick={() => setIsNewTradeModalOpen(false)}
+              className="px-5 py-2.5 rounded-xl text-slate-400 hover:text-white font-bold text-xs bg-[#16223b] hover:bg-[#202f50] transition-colors"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset
+              Cancel
             </button>
-
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 transition-all transform active:scale-95"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 transition-all transform active:scale-95"
             >
-              <Save className="w-4 h-4" />
               Save Trade
             </button>
           </div>
