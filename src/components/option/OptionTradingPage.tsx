@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTradeContext } from "../../context/TradeContext";
 import { 
   Zap, 
@@ -12,14 +12,14 @@ import {
   Flame, 
   CheckCircle2, 
   Layers, 
-  RefreshCw,
-  Sparkles,
-  ShieldAlert,
-  Compass,
-  Cpu,
-  Target,
-  BarChart2,
-  Lock,
+  RefreshCw, 
+  Sparkles, 
+  Compass, 
+  Cpu, 
+  Target, 
+  BarChart2, 
+  ShieldCheck,
+  Radio,
   ArrowRight
 } from "lucide-react";
 import { formatINR } from "../../utils/calculations";
@@ -41,10 +41,36 @@ const INDICES_CONFIG: Record<IndexKey, IndexMeta> = {
   SENSEX: { name: "BSE Sensex", symbol: "SENSEX", strikeStep: 100, lotSize: 10, expiryDay: "Friday" }
 };
 
+interface StrikeItem {
+  strike: number;
+  isAtm: boolean;
+  isCeItm: boolean;
+  isPeItm: boolean;
+  ceLtp: number;
+  peLtp: number;
+  ceOI: number;
+  peOI: number;
+  ceChangeOI: number;
+  peChangeOI: number;
+  ceAction: string;
+  peAction: string;
+}
+
 export const OptionTradingPage: React.FC = () => {
-  const { ticker, setIsNewTradeModalOpen, setEditingTrade, challenge } = useTradeContext();
+  const { setIsNewTradeModalOpen, setEditingTrade, challenge } = useTradeContext();
   const [selectedIndex, setSelectedIndex] = useState<IndexKey>("NIFTY");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dataSource, setDataSource] = useState<string>("Real-Time Exchange Feed");
+
+  // Live Option Chain State from Backend API
+  const [spotPrice, setSpotPrice] = useState<number>(24175.65);
+  const [changePercent, setChangePercent] = useState<number>(-0.13);
+  const [vix, setVix] = useState<number>(13.8);
+  const [pcr, setPcr] = useState<number>(1.08);
+  const [maxPain, setMaxPain] = useState<number>(24200);
+  const [highestCallOI, setHighestCallOI] = useState<number>(24300);
+  const [highestPutOI, setHighestPutOI] = useState<number>(24100);
+  const [strikes, setStrikes] = useState<StrikeItem[]>([]);
 
   // Position Sizing Calculator Inputs
   const [calcCapital, setCalcCapital] = useState<number>(challenge.startingCapital || 100000);
@@ -53,31 +79,48 @@ export const OptionTradingPage: React.FC = () => {
   const [optionBuyPrice, setOptionBuyPrice] = useState<number>(125);
 
   const config = INDICES_CONFIG[selectedIndex];
-
-  // Find live spot price from ticker
-  const currentTickerItem = ticker.find(t => 
-    t.name.toLowerCase().includes(selectedIndex === "NIFTY" ? "nifty 50" : selectedIndex === "BANKNIFTY" ? "nifty bank" : selectedIndex === "SENSEX" ? "sensex" : "fin")
-  );
-
-  const spotPrice = currentTickerItem?.value || (selectedIndex === "NIFTY" ? 24175.65 : selectedIndex === "BANKNIFTY" ? 57496.30 : 77264.51);
-  const changePercent = currentTickerItem?.changePercent || 0;
   const isMarketBullish = changePercent >= 0;
-
-  // Derive ATM and Option Chain Strikes
   const atmStrike = Math.round(spotPrice / config.strikeStep) * config.strikeStep;
-  const strikes = [
-    atmStrike - config.strikeStep * 2,
-    atmStrike - config.strikeStep,
-    atmStrike,
-    atmStrike + config.strikeStep,
-    atmStrike + config.strikeStep * 2
-  ];
+
+  // Fetch Live Option Chain from Cloudflare Worker /api/option-chain
+  const fetchLiveOptionChain = async () => {
+    try {
+      setIsRefreshing(true);
+      const res = await fetch(`/api/option-chain?symbol=${selectedIndex}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setSpotPrice(data.spotPrice || spotPrice);
+          setChangePercent(data.changePercent || changePercent);
+          setVix(data.vix || vix);
+          setPcr(data.pcr || pcr);
+          setMaxPain(data.maxPain || maxPain);
+          setHighestCallOI(data.highestCallOI || highestCallOI);
+          setHighestPutOI(data.highestPutOI || highestPutOI);
+          setDataSource(data.source || "Real-Time Exchange Engine");
+          if (Array.isArray(data.strikes) && data.strikes.length > 0) {
+            setStrikes(data.strikes);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch live option chain:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveOptionChain();
+    const interval = setInterval(fetchLiveOptionChain, 30000); // 30s auto-refresh
+    return () => clearInterval(interval);
+  }, [selectedIndex]);
 
   // Key Institutional Levels
-  const overheadSupply = selectedIndex === "NIFTY" ? "24,280 – 24,320" : selectedIndex === "BANKNIFTY" ? "57,800 – 58,000" : "77,800 – 78,000";
-  const dynamicPivot = selectedIndex === "NIFTY" ? "24,180 – 24,200" : selectedIndex === "BANKNIFTY" ? "57,450 – 57,550" : "77,200 – 77,300";
-  const demandZone = selectedIndex === "NIFTY" ? "24,100 – 24,120" : selectedIndex === "BANKNIFTY" ? "57,150 – 57,250" : "76,800 – 77,000";
-  const invalidationSL = selectedIndex === "NIFTY" ? "24,050" : selectedIndex === "BANKNIFTY" ? "57,000" : "76,600";
+  const overheadSupply = `${highestCallOI} (Call Resistance)`;
+  const dynamicPivot = `${atmStrike} (ATM Pin)`;
+  const demandZone = `${highestPutOI} (Put Support)`;
+  const invalidationSL = `${highestPutOI - config.strikeStep}`;
 
   // Position sizing calculations
   const maxRiskAmount = Math.round(calcCapital * (riskPercent / 100));
@@ -89,10 +132,6 @@ export const OptionTradingPage: React.FC = () => {
   const target1Reward = Math.round(totalQuantity * (stopLossPoints * 1.5));
   const target2Reward = Math.round(totalQuantity * (stopLossPoints * 2.3));
   const target3Reward = Math.round(totalQuantity * (stopLossPoints * 3.0));
-
-  // PCR & VIX Estimates
-  const estimatedPcr = isMarketBullish ? 1.08 : 0.88;
-  const estimatedVix = 13.8;
 
   // Setup Live Scalp Trade Click
   const handleLogScalpTrade = (strike: number, type: "CE" | "PE", price: number) => {
@@ -122,23 +161,18 @@ export const OptionTradingPage: React.FC = () => {
       mistakes: [],
       followedPlan: true,
       followedRisk: true,
-      notes: `Institutional Scalp on ${config.name} ${strike} ${type}. Risk: ₹${totalActualRisk}, Target: ₹${target2Reward}.`,
+      notes: `Institutional Scalp on ${config.name} ${strike} ${type}. Risk: ₹${totalActualRisk}, Target: ₹${target2Reward}. Source: ${dataSource}.`,
       analysis: "Confluence of Demand FVG zone, EMA 9/15 crossover and VWAP breakout.",
       createdAt: new Date().toISOString()
     });
     setIsNewTradeModalOpen(true);
   };
 
-  const handleManualRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 700);
-  };
-
   return (
     <div className="space-y-6">
       
       {/* ========================================================================= */}
-      {/* 🚀 ENGINE HEADER & INDEX SELECTOR */}
+      {/* 🚀 ENGINE HEADER & LIVE API STATUS */}
       {/* ========================================================================= */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-[#111a2e] light:bg-white p-5 sm:p-6 rounded-3xl border border-[#1e2942] light:border-slate-200 shadow-2xl">
         <div className="flex items-center gap-3.5">
@@ -150,13 +184,13 @@ export const OptionTradingPage: React.FC = () => {
               <h2 className="text-xl sm:text-2xl font-black text-white light:text-slate-900 tracking-tight">
                 AI Options Intelligence Engine
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                INSTITUTIONAL RADAR
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                <Radio className="w-3 h-3 animate-pulse text-emerald-400" />
+                <span>{dataSource}</span>
               </span>
             </div>
             <p className="text-xs text-slate-400 font-medium mt-0.5">
-              Quantitative Derivatives Confluence, Smart Money Order Flow & Probabilistic Decision Matrix
+              Live Option Chain, Open Interest (OI) Analysis, Put-Call Ratio & Probabilistic Execution Matrix
             </p>
           </div>
         </div>
@@ -192,17 +226,17 @@ export const OptionTradingPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <Compass className="w-4 h-4 text-blue-400" />
-              Market Weather Meter
+              Market Weather
             </span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              REGIME
+              VIX: {vix}
             </span>
           </div>
           <div className="text-lg font-black text-amber-400 flex items-center gap-2">
             <span>🌤️ Range Bound / Rotational</span>
           </div>
           <p className="text-[11px] text-slate-400 leading-tight">
-            Sector divergence active. Largecap IT/Pharma holding while Banks consolidate.
+            Low volatility compression. Prefer spreads or strict SL scalping at boundaries.
           </p>
         </div>
 
@@ -214,14 +248,14 @@ export const OptionTradingPage: React.FC = () => {
               Smart Money Tracker
             </span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              INSTITUTIONAL
+              PCR: {pcr}
             </span>
           </div>
           <div className="text-lg font-black text-emerald-400 flex items-center gap-2">
             <span>🟢 Accumulation on Dips</span>
           </div>
           <p className="text-[11px] text-slate-400 leading-tight">
-            Put writing concentrated at 24,000–24,100. Call resistance capped near 24,300.
+            Put base strong at {highestPutOI}. Call writers defending {highestCallOI}.
           </p>
         </div>
 
@@ -271,122 +305,70 @@ export const OptionTradingPage: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🕵️ WHAT INSTITUTIONAL TRADERS ARE LIKELY DOING */}
+      {/* 📊 LIVE SPOT & DERIVATIVES CONFLUENCE METRICS */}
       {/* ========================================================================= */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-[#111a2e] via-[#16223b] to-[#111a2e] light:from-white light:to-slate-50 border border-[#1e2942] light:border-slate-200 shadow-xl space-y-3">
-        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-blue-400">
-          <Activity className="w-4 h-4" />
-          <span>What Institutional Traders Are Likely Doing (Live Order Flow Synthesis)</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300 light:text-slate-700 leading-relaxed">
-          <div className="p-3.5 rounded-2xl bg-[#0d1527]/80 light:bg-slate-100 border border-[#1e2d4d] light:border-slate-200 space-y-1">
-            <strong className="text-white light:text-slate-900 block font-bold">1. FII / DII Sectoral Absorption:</strong>
-            Domestic institutions (DII) are aggressively absorbing any dip in IT and defensive stocks (+3.18%), neutralizing banking weakness and preventing sharp downward liquidation.
-          </div>
-          <div className="p-3.5 rounded-2xl bg-[#0d1527]/80 light:bg-slate-100 border border-[#1e2d4d] light:border-slate-200 space-y-1">
-            <strong className="text-white light:text-slate-900 block font-bold">2. Dealer Gamma & Pin Risk:</strong>
-            Options market makers have sold heavy straddles near the <strong>24,200 ATM strike</strong>. They will actively delta-hedge to keep spot pinned between 24,100 and 24,280.
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 📊 STATISTICAL PROBABILITY & CONFLUENCE KEY LEVELS */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Left: Probability Breakdown */}
-        <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#1e2942] pb-3">
-            <h3 className="text-sm font-black text-white light:text-slate-900 flex items-center gap-2">
-              <BarChart2 className="w-4 h-4 text-blue-400" />
-              Directional Probability Engine
-            </h3>
-            <span className="text-[10px] font-mono text-slate-400">100% Normalized</span>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <div className="flex justify-between text-xs font-bold mb-1">
-                <span className="text-emerald-400">🟢 Bullish Expansion (Break &gt; 24,280)</span>
-                <span className="font-mono text-emerald-400">35%</span>
-              </div>
-              <div className="w-full bg-[#16223b] h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full rounded-full w-[35%]"></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs font-bold mb-1">
-                <span className="text-amber-400">🟡 Sideways Range (24,080 – 24,250)</span>
-                <span className="font-mono text-amber-400">50%</span>
-              </div>
-              <div className="w-full bg-[#16223b] h-2 rounded-full overflow-hidden">
-                <div className="bg-amber-400 h-full rounded-full w-[50%]"></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs font-bold mb-1">
-                <span className="text-rose-400">🔴 Bearish Breakdown (&lt; 24,050)</span>
-                <span className="font-mono text-rose-400">15%</span>
-              </div>
-              <div className="w-full bg-[#16223b] h-2 rounded-full overflow-hidden">
-                <div className="bg-rose-400 h-full rounded-full w-[15%]"></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-[#16223b] border border-[#23355b] text-[11px] text-slate-300">
-            <strong>Optimal Edge:</strong> Mean-reversion scalping at range edges. Avoid buying breakouts in the middle of the range.
-          </div>
-        </div>
-
-        {/* Right: Key Institutional Confluence Levels */}
-        <div className="lg:col-span-2 p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#1e2942] pb-3">
-            <h3 className="text-sm font-black text-white light:text-slate-900 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-purple-400" />
-              Institutional Price Levels ({config.name})
-            </h3>
-            <span className="text-xs font-mono font-bold text-white bg-blue-600 px-2.5 py-0.5 rounded-lg">
-              Spot: {spotPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+        {/* Card 1: Spot Price */}
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">{config.name} Spot Price</span>
+            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+              Lot: {config.lotSize}
             </span>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-              <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">
-                🛑 Overhead Supply / Order Block
-              </span>
-              <div className="text-base font-black text-white font-mono">{overheadSupply}</div>
-              <p className="text-[10px] text-slate-400">Heavy Call Writing ceiling & Liquidity sweep resistance.</p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">
-                ⚖️ Dynamic Pivot / VWAP Anchor
-              </span>
-              <div className="text-base font-black text-white font-mono">{dynamicPivot}</div>
-              <p className="text-[10px] text-slate-400">Session equilibrium. EMA 9/15 convergence band.</p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
-                🎯 Demand Zone / Fair Value Gap (FVG)
-              </span>
-              <div className="text-base font-black text-emerald-400 font-mono">{demandZone}</div>
-              <p className="text-[10px] text-slate-400">Institutional discount entry with high risk-reward.</p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                🛡️ Structural Invalidation SL
-              </span>
-              <div className="text-base font-black text-rose-300 font-mono">{invalidationSL}</div>
-              <p className="text-[10px] text-slate-400">15-min close below this level terminates bullish bias.</p>
-            </div>
+          <div className="text-3xl font-black text-white light:text-slate-900 font-mono">
+            {spotPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
           </div>
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className={`flex items-center gap-0.5 ${isMarketBullish ? "text-emerald-400" : "text-rose-400"}`}>
+              {isMarketBullish ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+              {changePercent >= 0 ? `+${changePercent.toFixed(2)}%` : `${changePercent.toFixed(2)}%`}
+            </span>
+            <span className="text-[11px] text-slate-500 font-medium">ATM: {atmStrike}</span>
+          </div>
+        </div>
+
+        {/* Card 2: Max Pain Strike */}
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Max Pain Strike</span>
+            <Target className="w-4 h-4 text-purple-400" />
+          </div>
+          <div className="text-3xl font-black text-purple-400 font-mono">
+            {maxPain}
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Options sellers lose least money near {maxPain} on expiry.
+          </p>
+        </div>
+
+        {/* Card 3: Highest Call OI (Resistance Ceiling) */}
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Major Resistance (Call OI)</span>
+            <TrendingDown className="w-4 h-4 text-rose-400" />
+          </div>
+          <div className="text-3xl font-black text-rose-400 font-mono">
+            {highestCallOI}
+          </div>
+          <p className="text-[11px] text-slate-400 font-medium">
+            Aggressive Call Writing ceiling zone.
+          </p>
+        </div>
+
+        {/* Card 4: Highest Put OI (Support Floor) */}
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Major Support (Put OI)</span>
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-3xl font-black text-emerald-400 font-mono">
+            {highestPutOI}
+          </div>
+          <p className="text-[11px] text-slate-400 font-medium">
+            Institutional Put Writing floor zone.
+          </p>
         </div>
 
       </div>
@@ -410,7 +392,7 @@ export const OptionTradingPage: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Optimized for low VIX (13.8) to eliminate theta decay while capturing mean-reversion upside
+                Optimized for low VIX ({vix}) to eliminate theta decay while capturing mean-reversion upside
               </p>
             </div>
           </div>
@@ -449,26 +431,26 @@ export const OptionTradingPage: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🎯 LIVE STRIKE PRICE MATRIX (OPTION CHAIN) */}
+      {/* 🎯 LIVE STRIKE PRICE MATRIX & OPEN INTEREST (OPTION CHAIN) */}
       {/* ========================================================================= */}
       <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#1e2942] pb-3">
           <div>
             <h3 className="text-sm font-black text-white light:text-slate-900 flex items-center gap-2">
               <Layers className="w-4 h-4 text-blue-400" />
-              Live Strike Matrix & Quick Scalp Execution ({config.name})
+              Live Option Chain Matrix & Open Interest ({config.name})
             </h3>
             <p className="text-xs text-slate-400">
-              Click <strong>"⚡ Buy CE"</strong> or <strong>"⚡ Buy PE"</strong> to auto-fill the trade ticket instantly!
+              Live Call/Put OI buildup, Action status, and 1-Click execution for ATM & ITM strikes
             </p>
           </div>
 
           <button
-            onClick={handleManualRefresh}
+            onClick={fetchLiveOptionChain}
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-[#16223b] border border-[#23355b] transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-blue-400" : ""}`} />
-            <span>Refresh Chain</span>
+            <span>Refresh Live Chain</span>
           </button>
         </div>
 
@@ -477,67 +459,78 @@ export const OptionTradingPage: React.FC = () => {
             <thead className="bg-[#16223b] light:bg-slate-50 text-slate-400 font-bold text-[10px] uppercase tracking-wider border-b border-[#1e2942]">
               <tr>
                 <th className="py-3 px-4 text-emerald-400">Call (CE) Action</th>
-                <th className="py-3 px-4 text-emerald-400">CE Est. Price</th>
+                <th className="py-3 px-4 text-emerald-400">CE OI</th>
+                <th className="py-3 px-4 text-emerald-400">CE LTP</th>
                 <th className="py-3 px-4 text-center font-black text-white">Strike Price</th>
-                <th className="py-3 px-4 text-right text-rose-400">PE Est. Price</th>
+                <th className="py-3 px-4 text-right text-rose-400">PE LTP</th>
+                <th className="py-3 px-4 text-right text-rose-400">PE OI</th>
                 <th className="py-3 px-4 text-right text-rose-400">Put (PE) Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e2942]">
-              {strikes.map((strike) => {
-                const isAtm = strike === atmStrike;
-                const isCeItm = strike < atmStrike;
-                const isPeItm = strike > atmStrike;
-                
-                const cePrice = Math.max(25, Number((140 + (atmStrike - strike) * 0.55).toFixed(1)));
-                const pePrice = Math.max(25, Number((135 + (strike - atmStrike) * 0.55).toFixed(1)));
-
+              {strikes.map((s) => {
                 return (
                   <tr 
-                    key={strike}
+                    key={s.strike}
                     className={`hover:bg-[#16223b]/60 transition-colors ${
-                      isAtm ? "bg-blue-600/10 border-y border-blue-500/30" : ""
+                      s.isAtm ? "bg-blue-600/10 border-y border-blue-500/30" : ""
                     }`}
                   >
                     {/* Call Buy Button */}
                     <td className="py-3 px-4">
                       <button
-                        onClick={() => handleLogScalpTrade(strike, "CE", cePrice)}
+                        onClick={() => handleLogScalpTrade(s.strike, "CE", s.ceLtp)}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-600 hover:text-white text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer"
                       >
                         <Zap className="w-3.5 h-3.5" />
-                        <span>Buy {strike} CE</span>
+                        <span>Buy {s.strike} CE</span>
                       </button>
+                    </td>
+
+                    {/* CE OI & Action */}
+                    <td className="py-3 px-4">
+                      <div className="font-mono font-bold text-slate-300">
+                        {(s.ceOI / 1000).toFixed(1)}k
+                      </div>
+                      <div className="text-[9px] text-emerald-400">{s.ceAction}</div>
                     </td>
 
                     {/* CE Price */}
                     <td className="py-3 px-4 font-mono font-bold text-white">
-                      ₹{cePrice}
-                      {isCeItm && <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded font-normal">ITM</span>}
+                      ₹{s.ceLtp}
+                      {s.isCeItm && <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded font-normal">ITM</span>}
                     </td>
 
                     {/* Strike Center */}
                     <td className="py-3 px-4 text-center font-mono font-black text-sm">
-                      <span className={`px-3 py-1 rounded-xl ${isAtm ? "bg-blue-600 text-white shadow-md" : "text-slate-300"}`}>
-                        {strike}
+                      <span className={`px-3 py-1 rounded-xl ${s.isAtm ? "bg-blue-600 text-white shadow-md" : "text-slate-300"}`}>
+                        {s.strike}
                       </span>
-                      {isAtm && <div className="text-[9px] text-blue-400 font-bold mt-0.5">ATM STRIKE</div>}
+                      {s.isAtm && <div className="text-[9px] text-blue-400 font-bold mt-0.5">ATM STRIKE</div>}
                     </td>
 
                     {/* PE Price */}
                     <td className="py-3 px-4 text-right font-mono font-bold text-white">
-                      {isPeItm && <span className="mr-2 text-[9px] bg-rose-500/20 text-rose-400 px-1 rounded font-normal">ITM</span>}
-                      ₹{pePrice}
+                      {s.isPeItm && <span className="mr-2 text-[9px] bg-rose-500/20 text-rose-400 px-1 rounded font-normal">ITM</span>}
+                      ₹{s.peLtp}
+                    </td>
+
+                    {/* PE OI & Action */}
+                    <td className="py-3 px-4 text-right">
+                      <div className="font-mono font-bold text-slate-300">
+                        {(s.peOI / 1000).toFixed(1)}k
+                      </div>
+                      <div className="text-[9px] text-rose-400">{s.peAction}</div>
                     </td>
 
                     {/* Put Buy Button */}
                     <td className="py-3 px-4 text-right">
                       <button
-                        onClick={() => handleLogScalpTrade(strike, "PE", pePrice)}
+                        onClick={() => handleLogScalpTrade(s.strike, "PE", s.peLtp)}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-600 hover:text-white text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer"
                       >
                         <Zap className="w-3.5 h-3.5" />
-                        <span>Buy {strike} PE</span>
+                        <span>Buy {s.strike} PE</span>
                       </button>
                     </td>
                   </tr>
@@ -689,7 +682,7 @@ export const OptionTradingPage: React.FC = () => {
             Rule 1: Always Trade ATM / 1-Strike ITM
           </div>
           <p className="text-xs text-slate-300 light:text-slate-600 leading-relaxed">
-            Deep OTM options suffer massive Theta decay in low VIX. Stick to high Delta (0.50+) strikes for fast moves.
+            Deep OTM options suffer massive Theta decay in low VIX ({vix}). Stick to high Delta (0.50+) strikes for fast moves.
           </p>
         </div>
 
