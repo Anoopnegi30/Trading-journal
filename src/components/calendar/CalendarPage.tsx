@@ -15,7 +15,7 @@ import {
 
 export const CalendarPage: React.FC = () => {
   const { trades, setSelectedTrade } = useTradeContext();
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 4, 1)); // May 2026 default
+  const [currentDate, setCurrentDate] = useState(new Date(2026, 7, 1)); // August 2026 default
   const [selectedDayTrades, setSelectedDayTrades] = useState<{ date: string; trades: Trade[] } | null>(null);
 
   const year = currentDate.getFullYear();

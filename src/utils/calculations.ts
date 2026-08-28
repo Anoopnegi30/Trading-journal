@@ -18,9 +18,9 @@ export function calculateDashboardStats(trades: Trade[]): DashboardStats {
       losingTrades: 0,
       breakevenTrades: 0,
       profitFactor: 0,
-      confidenceScore: 85,
-      confidenceLabel: 'High Confidence',
-      confidenceDesc: 'You are trading with good discipline and emotional stability.'
+      confidenceScore: 100,
+      confidenceLabel: 'Ready for August 2026',
+      confidenceDesc: 'Start logging your trades with strict discipline and rules adherence.'
     };
   }
 
@@ -70,14 +70,14 @@ export function calculateDashboardStats(trades: Trade[]): DashboardStats {
   }
 
   return {
-    highestPnl: highestPnl || 146170.9,
-    highestPnlChangePercent: +62.9,
+    highestPnl,
+    highestPnlChangePercent: +10.0,
     winRate: Number(winRate.toFixed(1)),
-    winRateChangePercent: -11.2,
-    avgRiskReward: '1:3.21',
-    avgRiskRewardChangePercent: +1.15,
+    winRateChangePercent: 0,
+    avgRiskReward: '1:2.5',
+    avgRiskRewardChangePercent: 0,
     tradesThisMonth: validTrades.length,
-    tradesThisMonthChange: +6,
+    tradesThisMonthChange: validTrades.length,
     totalPnl,
     winningTrades,
     losingTrades,

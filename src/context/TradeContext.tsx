@@ -63,10 +63,10 @@ interface TradeContextType {
 
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
-const TRADES_STORAGE_KEY = 'trade_diary_trades_v1';
-const THEME_STORAGE_KEY = 'trade_diary_theme_v1';
-const RULES_STORAGE_KEY = 'trade_diary_rules_v1';
-const CHECKLIST_STORAGE_KEY = 'trade_diary_checklist_v1';
+const TRADES_STORAGE_KEY = 'trade_diary_trades_v3_august_2026';
+const THEME_STORAGE_KEY = 'trade_diary_theme_v3';
+const RULES_STORAGE_KEY = 'trade_diary_rules_v3';
+const CHECKLIST_STORAGE_KEY = 'trade_diary_checklist_v3';
 
 export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Theme state
@@ -74,7 +74,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (localStorage.getItem(THEME_STORAGE_KEY) as 'dark' | 'light') || 'dark';
   });
 
-  // Trades state
+  // Trades state - Fresh start from August 2026
   const [trades, setTrades] = useState<Trade[]>(() => {
     const saved = localStorage.getItem(TRADES_STORAGE_KEY);
     if (saved) {
@@ -109,19 +109,16 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isNewTradeModalOpen, setIsNewTradeModalOpen] = useState<boolean>(false);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [marketFilter, setMarketFilter] = useState<string>('Indian');
-  const [dateFilter, setDateFilter] = useState<string>('Last 30 Days');
+  const [dateFilter, setDateFilter] = useState<string>('August 2026');
   const [ticker, setTicker] = useState<MarketTickerItem[]>(INITIAL_TICKER);
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
 
   // Initial cloud fetch on startup
   useEffect(() => {
     fetchCloudTrades().then(cloudTrades => {
-      if (cloudTrades && cloudTrades.length > 0) {
+      if (cloudTrades && Array.isArray(cloudTrades)) {
         setTrades(cloudTrades);
         setIsCloudSynced(true);
-      } else if (trades.length > 0) {
-        // Sync local initial trades to cloud
-        syncAllTradesToCloud(trades);
       }
     });
   }, []);
@@ -286,7 +283,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               const qty = parseFloat(row.Quantity || row.Qty || '1') || 1;
               const fees = parseFloat(row.Fees || row.Charges || '0') || 0;
               const dir = (row.Direction || 'Long').toLowerCase().includes('short') ? 'Short' : 'Long';
-              const gross = dir === 'Long' ? (exit - entry) * qty : (entry - exit) * qty;
+              const gross = (exit - entry) * qty;
               const net = row.NetPnL ? parseFloat(row.NetPnL) : gross - fees;
 
               return {
@@ -337,14 +334,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const resetToSampleData = () => {
-    if (window.confirm('Reset all trades and statistics back to demo data?')) {
-      setTrades(INITIAL_TRADES);
-      setRules(INITIAL_RULES);
-      setChecklist(INITIAL_CHECKLIST);
-      syncAllTradesToCloud(INITIAL_TRADES);
+    if (window.confirm('Clear all trade data and start fresh from August 2026?')) {
+      setTrades([]);
+      syncAllTradesToCloud([]);
       localStorage.removeItem(TRADES_STORAGE_KEY);
-      localStorage.removeItem(RULES_STORAGE_KEY);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
     }
   };
 

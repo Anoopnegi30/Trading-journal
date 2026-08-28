@@ -23,7 +23,7 @@ interface ChecklistItem {
 
 export const ChecklistPage: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'Checklist' | 'Analysis'>('Checklist');
-  const [currentDate] = useState('19-05-2026');
+  const [currentDate] = useState('28-08-2026');
   const [isSaved, setIsSaved] = useState(false);
 
   // Pre-Market items matching screenshot 2 & 3
