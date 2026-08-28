@@ -226,3 +226,31 @@ html.light .glass-panel {
 .glow-rose {
   box-shadow: 0 0 20px -5px rgba(244, 63, 94, 0.35);
 }
+
+/* ==========================================================================
+   SEAMLESS INFINITE TICKER MARQUEE
+   ========================================================================== */
+@keyframes ticker-scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-ticker-marquee {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll-left 28s linear infinite;
+  will-change: transform;
+}
+
+.animate-ticker-marquee:hover {
+  animation-play-state: paused;
+}
+
+.mask-fade-edges {
+  mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+}

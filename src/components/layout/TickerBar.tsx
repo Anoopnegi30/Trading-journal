@@ -41,15 +41,15 @@ export const TickerBar: React.FC = () => {
           </span>
         </div>
 
-        {/* Live Market Ticker */}
-        <div className="flex-1 overflow-hidden relative mx-2 hidden sm:block">
-          <div className="flex items-center gap-6 whitespace-nowrap overflow-x-auto no-scrollbar scroll-smooth">
-            {ticker.map((item, idx) => {
+        {/* Live Continuous Auto-Scrolling Market Ticker */}
+        <div className="flex-1 overflow-hidden relative mx-2 hidden sm:block mask-fade-edges">
+          <div className="animate-ticker-marquee flex items-center gap-4 whitespace-nowrap py-0.5">
+            {[...ticker, ...ticker, ...ticker].map((item, idx) => {
               const isPositive = item.changePercent >= 0;
               return (
                 <div
                   key={idx}
-                  className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-xl bg-[#131d35]/80 light:bg-slate-100 border border-[#1e2d4d] light:border-slate-200 transition-all hover:bg-[#192647] shadow-sm"
+                  className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-xl bg-[#131d35]/80 light:bg-slate-100 border border-[#1e2d4d] light:border-slate-200 transition-all hover:bg-[#192647] shadow-sm shrink-0"
                 >
                   <span className="font-medium text-slate-300 light:text-slate-700">{item.name}:</span>
                   {item.value > 0 && (
