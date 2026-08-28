@@ -543,6 +543,13 @@ export const NewTradeModal: React.FC = () => {
                     className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] rounded-xl px-3 py-2 text-slate-200 focus:outline-none"
                   >
                     <option value="Breakout">Breakout</option>
+                    <option value="Reversal">Reversal</option>
+                    <option value="Pullback">Pullback</option>
+                    <option value="News-based">News-based</option>
+                    <option value="Trend">Trend</option>
+                    <option value="Fibonacci retracement">Fibonacci retracement</option>
+                    <option value="9&15 Ema">9&15 Ema</option>
+                    <option value="Other">Other</option>
                     <option value="9&15 Ema">9&15 Ema</option>
                     <option value="Pullback">Pullback</option>
                     <option value="Support & Resistance">Support & Resistance</option>
