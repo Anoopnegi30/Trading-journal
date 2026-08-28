@@ -94,6 +94,16 @@ export interface TradingRule {
   active: boolean;
 }
 
+export interface TradingStrategy {
+  id: string;
+  name: string;
+  description: string;
+  targetWinRate?: string;
+  targetRiskReward?: string;
+  timeframe?: string;
+  active: boolean;
+}
+
 export interface ChecklistItem {
   id: string;
   title: string;

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem } from '../types/trade';
-import { INITIAL_TRADES, INITIAL_RULES, INITIAL_CHECKLIST, INITIAL_TICKER } from '../utils/mockData';
+import { Trade, MarketType, TradingRule, ChecklistItem, MarketTickerItem, TradingStrategy } from '../types/trade';
+import { INITIAL_TRADES, INITIAL_RULES, INITIAL_CHECKLIST, INITIAL_TICKER, INITIAL_STRATEGIES } from '../utils/mockData';
 import { fetchCloudTrades, saveTradeToCloud, syncAllTradesToCloud, deleteTradeFromCloud } from '../utils/cloudSync';
 import confetti from 'canvas-confetti';
 import Papa from 'papaparse';
@@ -44,6 +44,9 @@ interface TradeContextType {
   
   ticker: MarketTickerItem[];
   
+  strategies: TradingStrategy[];
+  addStrategy: (strat: Omit<TradingStrategy, 'id'>) => void;
+  
   rules: TradingRule[];
   addRule: (rule: Omit<TradingRule, 'id'>) => void;
   toggleRule: (id: string) => void;
@@ -63,10 +66,11 @@ interface TradeContextType {
 
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
-const TRADES_STORAGE_KEY = 'trade_diary_trades_v3_august_2026';
-const THEME_STORAGE_KEY = 'trade_diary_theme_v3';
-const RULES_STORAGE_KEY = 'trade_diary_rules_v3';
-const CHECKLIST_STORAGE_KEY = 'trade_diary_checklist_v3';
+const TRADES_STORAGE_KEY = 'trade_diary_trades_v4_august_2026';
+const THEME_STORAGE_KEY = 'trade_diary_theme_v4';
+const RULES_STORAGE_KEY = 'trade_diary_rules_v4';
+const STRATEGIES_STORAGE_KEY = 'trade_diary_strategies_v4';
+const CHECKLIST_STORAGE_KEY = 'trade_diary_checklist_v4';
 
 export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Theme state
@@ -85,6 +89,15 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
     return INITIAL_TRADES;
+  });
+
+  // Strategies state
+  const [strategies, setStrategies] = useState<TradingStrategy[]>(() => {
+    const saved = localStorage.getItem(STRATEGIES_STORAGE_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return INITIAL_STRATEGIES;
   });
 
   // Rules state
@@ -127,6 +140,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(trades));
   }, [trades]);
+
+  useEffect(() => {
+    localStorage.setItem(STRATEGIES_STORAGE_KEY, JSON.stringify(strategies));
+  }, [strategies]);
 
   useEffect(() => {
     localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(rules));
@@ -213,6 +230,14 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (selectedTrade?.id === id) {
       setSelectedTrade(null);
     }
+  };
+
+  const addStrategy = (strat: Omit<TradingStrategy, 'id'>) => {
+    const newStrat: TradingStrategy = {
+      ...strat,
+      id: 'strat-' + Date.now()
+    };
+    setStrategies(prev => [...prev, newStrat]);
   };
 
   const addRule = (rule: Omit<TradingRule, 'id'>) => {
@@ -361,6 +386,8 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         dateFilter,
         setDateFilter,
         ticker,
+        strategies,
+        addStrategy,
         rules,
         addRule,
         toggleRule,

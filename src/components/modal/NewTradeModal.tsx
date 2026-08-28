@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 
 export const NewTradeModal: React.FC = () => {
-  const { isNewTradeModalOpen, setIsNewTradeModalOpen, addTrade, rules } = useTradeContext();
+  const { isNewTradeModalOpen, setIsNewTradeModalOpen, addTrade, rules, strategies } = useTradeContext();
   
   // Navigation tabs in modal
   const [activeSubTab, setActiveSubTab] = useState<'general' | 'psychology'>('general');
@@ -598,13 +598,14 @@ export const NewTradeModal: React.FC = () => {
                     onChange={(e) => setStrategy(e.target.value)}
                     className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3 py-2 text-slate-200 light:text-slate-900 focus:outline-none"
                   >
-                    <option value="Breakout">Breakout</option>
-                    <option value="Reversal">Reversal</option>
-                    <option value="Pullback">Pullback</option>
+                    {strategies.map((s) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                    <option value="Trend Continuation">Trend Continuation</option>
+                    <option value="Fibonacci Retracement">Fibonacci Retracement</option>
                     <option value="News-based">News-based</option>
-                    <option value="Trend">Trend</option>
-                    <option value="Fibonacci retracement">Fibonacci retracement</option>
-                    <option value="9&15 Ema">9&15 Ema</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
