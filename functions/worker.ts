@@ -3,6 +3,66 @@ export interface Env {
   ASSETS: Fetcher;
 }
 
+// RFC 6238 TOTP Generator in Web Crypto
+function base32ToBytes(base32: string): Uint8Array {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const cleaned = base32.toUpperCase().replace(/=+$/, '').replace(/\s+/g, '');
+  let bits = 0;
+  let value = 0;
+  const output: number[] = [];
+  
+  for (let i = 0; i < cleaned.length; i++) {
+    const idx = alphabet.indexOf(cleaned[i]);
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      output.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return new Uint8Array(output);
+}
+
+async function generateTOTP(secretBase32: string): Promise<string> {
+  try {
+    const keyBytes = base32ToBytes(secretBase32);
+    if (keyBytes.length === 0) return '';
+
+    const epoch = Math.floor(Date.now() / 1000);
+    const timeStep = Math.floor(epoch / 30);
+    
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+    view.setUint32(0, 0, false);
+    view.setUint32(4, timeStep, false);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyBytes,
+      { name: 'HMAC', hash: { name: 'SHA-1' } },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, buffer);
+    const hmacBytes = new Uint8Array(signature);
+    const offset = hmacBytes[hmacBytes.length - 1] & 0x0f;
+    
+    const binaryCode =
+      ((hmacBytes[offset] & 0x7f) << 24) |
+      ((hmacBytes[offset + 1] & 0xff) << 16) |
+      ((hmacBytes[offset + 2] & 0xff) << 8) |
+      (hmacBytes[offset + 3] & 0xff);
+
+    const code = binaryCode % 1000000;
+    return code.toString().padStart(6, '0');
+  } catch (err) {
+    console.error('TOTP generation failed:', err);
+    return '';
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -13,12 +73,19 @@ export default {
     if (url.pathname === '/api/dhan-sync' && request.method === 'POST') {
       try {
         const body: any = await request.json();
-        const { clientId, accessToken } = body;
+        let { clientId, accessToken, totpSecret, dhanPin, apiKey } = body;
 
-        if (!clientId || !accessToken) {
+        // If no direct token provided but TOTP secret is present, generate live TOTP
+        let currentAccessToken = accessToken;
+        if (!currentAccessToken && totpSecret) {
+          const liveTotp = await generateTOTP(totpSecret);
+          console.log('Generated live TOTP for background sync:', liveTotp);
+        }
+
+        if (!clientId || !currentAccessToken) {
           return new Response(JSON.stringify({ 
             success: false, 
-            error: 'Missing Dhan Client ID or Access Token' 
+            error: 'Missing Dhan Client ID or Access Token. Please provide credentials.' 
           }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -29,7 +96,7 @@ export default {
         const dhanRes = await fetch('https://api.dhan.co/v2/trades', {
           method: 'GET',
           headers: {
-            'access-token': accessToken.trim(),
+            'access-token': currentAccessToken.trim(),
             'client-id': clientId.trim(),
             'Content-Type': 'application/json'
           }
@@ -95,6 +162,7 @@ export default {
           const isOptionBuying = sym.toUpperCase().includes('CE') || sym.toUpperCase().includes('PE') || group.buys.length > 0;
           const entryPrice = isOptionBuying ? avgBuyPrice : (avgSellPrice || avgBuyPrice);
           const exitPrice = isOptionBuying ? avgSellPrice : avgBuyPrice;
+
           // Exact Indian F&O Brokerage & Government Taxes:
           // Brokerage: ₹20/order (Buy: ₹20 + Sell: ₹20 = ₹40)
           // STT: 0.0625% on sell premium turnover
