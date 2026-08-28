@@ -134,6 +134,7 @@ export function getMistakesBreakdown(trades: Trade[]): MistakeAnalysis[] {
 
   trades.forEach(t => {
     if (t.mistakes && t.mistakes.length > 0) {
+      // Total loss incurred in this trade
       const lossPortion = t.netPnl < 0 ? Math.abs(t.netPnl) / t.mistakes.length : 0;
       t.mistakes.forEach(m => {
         const current = mistakeMap.get(m) || { count: 0, totalLoss: 0 };
@@ -148,7 +149,7 @@ export function getMistakesBreakdown(trades: Trade[]): MistakeAnalysis[] {
   return Array.from(mistakeMap.entries()).map(([name, data]) => ({
     name,
     tradeCount: data.count,
-    totalLoss: Number(data.totalLoss.toFixed(2)),
+    totalLoss: Math.round(data.totalLoss),
     percentage: grandLoss > 0 ? Number(((data.totalLoss / grandLoss) * 100).toFixed(1)) : 0
   })).sort((a, b) => b.totalLoss - a.totalLoss);
 }
