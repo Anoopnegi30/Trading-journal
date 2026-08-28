@@ -21,7 +21,10 @@ import {
   XCircle,
   FileSpreadsheet,
   Zap,
-  Building
+  Building,
+  TrendingUp,
+  Receipt,
+  Wallet
 } from 'lucide-react';
 import { BrokerModal } from '../profile/BrokerModal';
 
@@ -70,6 +73,11 @@ export const TradesPage: React.FC = () => {
     return 0;
   });
 
+  // Calculate totals
+  const totalGrossPnl = filteredTrades.reduce((sum, t) => sum + (t.pnl || t.netPnl), 0);
+  const totalTaxes = filteredTrades.reduce((sum, t) => sum + (t.fees || 0), 0);
+  const totalNetPnl = filteredTrades.reduce((sum, t) => sum + t.netPnl, 0);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -101,7 +109,7 @@ export const TradesPage: React.FC = () => {
     if (res.success) {
       setSyncFeedback({
         type: 'success',
-        message: res.count > 0 ? `🎉 ${res.count} live trades imported from Dhan into Journal!` : 'Dhan Synced: No executed trades found today.'
+        message: res.count > 0 ? `🎉 ${res.count} live trades imported from Dhan into Journal!` : 'Dhan Synced: No new executed trades found today.'
       });
     } else {
       setSyncFeedback({
@@ -248,6 +256,41 @@ export const TradesPage: React.FC = () => {
         </div>
       )}
 
+      {/* Realised vs Net P&L Summary Cards */}
+      {filteredTrades.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-4 rounded-2xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-md">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-blue-400" /> Dhan Realised P&L (Gross)
+            </span>
+            <div className={`text-xl font-black mt-1 ${totalGrossPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {formatINR(totalGrossPnl)}
+            </div>
+            <p className="text-[10px] text-slate-500 mt-0.5">Matches Dhan Positions Tab</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-md">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Receipt className="w-3.5 h-3.5 text-amber-400" /> Brokerage & Govt Taxes
+            </span>
+            <div className="text-xl font-black text-amber-400 mt-1">
+              -{formatINR(totalTaxes)}
+            </div>
+            <p className="text-[10px] text-slate-500 mt-0.5">₹40 Brokerage + STT + GST + NSE</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-md">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Wallet className="w-3.5 h-3.5 text-emerald-400" /> Net In-Hand P&L
+            </span>
+            <div className={`text-xl font-black mt-1 ${totalNetPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {formatINR(totalNetPnl)}
+            </div>
+            <p className="text-[10px] text-slate-500 mt-0.5">Actual take-home profit</p>
+          </div>
+        </div>
+      )}
+
       {/* Trades Table Card */}
       <div className="bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 rounded-2xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
@@ -260,6 +303,8 @@ export const TradesPage: React.FC = () => {
                 <th className="py-3.5 px-4">Entry (₹)</th>
                 <th className="py-3.5 px-4">Exit (₹)</th>
                 <th className="py-3.5 px-4">Qty</th>
+                <th className="py-3.5 px-4">Gross P&L (Dhan)</th>
+                <th className="py-3.5 px-4">Taxes (₹)</th>
                 <th className="py-3.5 px-4">Net P&L</th>
                 <th className="py-3.5 px-4">Strategy</th>
                 <th className="py-3.5 px-4">Outcome</th>
@@ -269,7 +314,7 @@ export const TradesPage: React.FC = () => {
             <tbody className="divide-y divide-[#1e2942] light:divide-slate-200">
               {filteredTrades.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-16 text-center text-slate-400">
+                  <td colSpan={12} className="py-16 text-center text-slate-400">
                     <div className="max-w-xs mx-auto space-y-2">
                       <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
                       <p className="font-bold text-slate-300 light:text-slate-700">No trades in August 2026 yet</p>
@@ -281,7 +326,10 @@ export const TradesPage: React.FC = () => {
                 </tr>
               ) : (
                 filteredTrades.map(trade => {
-                  const isWin = trade.netPnl >= 0;
+                  const grossPnl = trade.pnl || trade.netPnl;
+                  const isGrossWin = grossPnl >= 0;
+                  const isNetWin = trade.netPnl >= 0;
+
                   return (
                     <tr
                       key={trade.id}
@@ -315,12 +363,28 @@ export const TradesPage: React.FC = () => {
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-300 light:text-slate-800">
                         {trade.quantity}
                       </td>
+                      
+                      {/* Gross Realised P&L */}
+                      <td className="py-3.5 px-4 font-mono font-bold">
+                        <span className={`flex items-center gap-0.5 ${isGrossWin ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isGrossWin ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                          {formatINR(grossPnl)}
+                        </span>
+                      </td>
+
+                      {/* Taxes & Charges */}
+                      <td className="py-3.5 px-4 font-mono text-amber-400 font-medium">
+                        -₹{trade.fees || 0}
+                      </td>
+
+                      {/* Net In-Hand P&L */}
                       <td className="py-3.5 px-4 font-mono font-black">
-                        <span className={`flex items-center gap-0.5 ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {isWin ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                        <span className={`flex items-center gap-0.5 ${isNetWin ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isNetWin ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                           {formatINR(trade.netPnl)}
                         </span>
                       </td>
+
                       <td className="py-3.5 px-4 text-slate-300 light:text-slate-700 font-semibold">
                         {trade.strategy || 'Breakout'}
                       </td>

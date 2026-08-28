@@ -176,9 +176,13 @@ export default {
           const gst = (brokerage + exchangeCharges) * 0.18;
           const stampDuty = totalBuyValue * 0.00003;
           const sebiCharges = (totalBuyValue + totalSellValue) * 0.000001;
-          const fees = Number((brokerage + stt + exchangeCharges + gst + stampDuty + sebiCharges).toFixed(2)) || 55.0;
-          const grossPnl = entryPrice > 0 && exitPrice > 0 ? (exitPrice - entryPrice) * matchedQty : 0;
+          const grossPnl = Number((totalSellValue - totalBuyValue).toFixed(2));
           const netPnl = Number((grossPnl - fees).toFixed(2));
+
+          const cleanSymbol = sym
+            .replace('Sep2026', '01 SEP')
+            .replace('Aug2026', '28 AUG')
+            .replace(/-/g, ' ');
 
           const tradeObj = {
             id: `dhan-${Date.now()}-${sym.replace(/[^a-zA-Z0-9]/g, '')}`,
@@ -187,7 +191,7 @@ export default {
             marketType: 'Indian',
             duration: 'Intraday',
             tradeType: isOptionBuying ? 'Option Buying' : 'Option Selling',
-            symbol: sym,
+            symbol: cleanSymbol,
             direction: sym.toUpperCase().includes('PE') ? 'Short' : 'Long',
             entryPrice: entryPrice || 100,
             exitPrice: exitPrice || 100,
