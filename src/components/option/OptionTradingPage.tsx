@@ -5,11 +5,9 @@ import {
   TrendingUp, 
   TrendingDown, 
   Activity, 
-  Scale, 
   Calculator, 
   ArrowUpRight, 
   ArrowDownRight, 
-  Flame, 
   CheckCircle2, 
   Layers, 
   RefreshCw, 
@@ -17,20 +15,10 @@ import {
   Compass, 
   Cpu, 
   Target, 
-  BarChart2, 
   ShieldCheck,
-  Radio,
-  ArrowRight,
-  Eye,
-  Sliders,
-  FileText,
-  Clock,
-  ShieldAlert,
-  Maximize2,
-  Info
+  Radio
 } from "lucide-react";
 import { formatINR } from "../../utils/calculations";
-import { TradingViewWidget } from "./TradingViewWidget";
 
 type IndexKey = "NIFTY" | "BANKNIFTY" | "FINNIFTY" | "SENSEX";
 
@@ -68,7 +56,7 @@ export const OptionTradingPage: React.FC = () => {
   const { setIsNewTradeModalOpen, setEditingTrade, challenge } = useTradeContext();
   const [selectedIndex, setSelectedIndex] = useState<IndexKey>("NIFTY");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dataSource, setDataSource] = useState<string>("TradingView Live Exchange Feed");
+  const [dataSource, setDataSource] = useState<string>("Real-Time Exchange Engine");
 
   // Live Option Chain State from Backend API
   const [spotPrice, setSpotPrice] = useState<number>(24175.65);
@@ -110,7 +98,7 @@ export const OptionTradingPage: React.FC = () => {
           setMaxPain(data.maxPain || maxPain);
           setHighestCallOI(data.highestCallOI || highestCallOI);
           setHighestPutOI(data.highestPutOI || highestPutOI);
-          setDataSource(data.source || "TradingView Live Exchange Feed");
+          setDataSource(data.source || "Real-Time Exchange Engine");
           if (Array.isArray(data.strikes) && data.strikes.length > 0) {
             setStrikes(data.strikes);
           }
@@ -193,11 +181,11 @@ export const OptionTradingPage: React.FC = () => {
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
                 <Radio className="w-3 h-3 animate-pulse text-emerald-400" />
-                <span>100% Real TradingView Feed</span>
+                <span>{dataSource}</span>
               </span>
             </div>
             <p className="text-xs text-slate-400 font-medium mt-0.5">
-              Live Interactive Candlestick Chart, Smart Money Order Blocks, Real-time Option Chain & Quantitative Execution
+              Live Option Chain, Smart Money Order Blocks, Real-time Open Interest (OI) & Quantitative Execution
             </p>
           </div>
         </div>
@@ -312,85 +300,70 @@ export const OptionTradingPage: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 📊 100% REAL LIVE TRADINGVIEW CHART & SMC CONFLUENCE PANELS */}
+      {/* 📊 LIVE SPOT & DERIVATIVES CONFLUENCE METRICS */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Left 3 Cols: Real TradingView Live Interactive Chart */}
-        <div className="lg:col-span-3 p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-2xl space-y-3">
-          <div className="flex items-center justify-between border-b border-[#1e2942] pb-3">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-black text-white light:text-slate-900">
-                {config.name} Real-Time Chart (TradingView Institutional Engine)
-              </h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
-                LIVE TICKS
-              </span>
-            </div>
+        {/* Card 1: Spot Price */}
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">{config.name} Spot Price</span>
+            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+              Lot: {config.lotSize}
+            </span>
           </div>
-
-          {/* Embedded Real TradingView Advanced Chart */}
-          <TradingViewWidget symbol={selectedIndex} />
+          <div className="text-3xl font-black text-white light:text-slate-900 font-mono">
+            {spotPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+          </div>
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className={`flex items-center gap-0.5 ${isMarketBullish ? "text-emerald-400" : "text-rose-400"}`}>
+              {isMarketBullish ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+              {changePercent >= 0 ? `+${changePercent.toFixed(2)}%` : `${changePercent.toFixed(2)}%`}
+            </span>
+            <span className="text-[11px] text-slate-500 font-medium">ATM: {atmStrike}</span>
+          </div>
         </div>
 
-        {/* Right 1 Col: AI Key Institutional Levels & SMC Targets */}
-        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-2xl space-y-4 flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="border-b border-[#1e2942] pb-3 flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                <Target className="w-4 h-4" />
-                AI Key Confluence Zones
-              </h3>
-              <span className="text-[10px] font-mono text-slate-400">{config.symbol}</span>
-            </div>
-
-            {/* Supply Zone */}
-            <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-              <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">
-                🛑 Supply Block / Call Resistance
-              </span>
-              <div className="text-base font-black text-white font-mono">{supplyZone}</div>
-              <p className="text-[10px] text-slate-400">Heavy Call Writing ceiling zone.</p>
-            </div>
-
-            {/* ATM Pin */}
-            <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-              <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">
-                🎯 Max Pain / Pin Strike
-              </span>
-              <div className="text-base font-black text-purple-300 font-mono">{maxPain}</div>
-              <p className="text-[10px] text-slate-400">Dealer zero-gamma straddle center.</p>
-            </div>
-
-            {/* Demand Zone */}
-            <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
-                🎯 Demand Block / Put Support
-              </span>
-              <div className="text-base font-black text-emerald-400 font-mono">{demandZone}</div>
-              <p className="text-[10px] text-slate-400">Institutional Put Accumulation Floor.</p>
-            </div>
-
-            {/* Invalidation SL */}
-            <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-              <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider block">
-                🛡️ Structural Invalidation SL
-              </span>
-              <div className="text-base font-black text-rose-400 font-mono">{invalidationSL}</div>
-              <p className="text-[10px] text-slate-400">15M candle close below invalidates trade.</p>
-            </div>
+        {/* Card 2: Max Pain Strike */}
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Max Pain Strike</span>
+            <Target className="w-4 h-4 text-purple-400" />
           </div>
+          <div className="text-3xl font-black text-purple-400 font-mono">
+            {maxPain}
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Options sellers lose least money near {maxPain} on expiry.
+          </p>
+        </div>
 
-          <button
-            onClick={() => handleLogScalpTrade(atmStrike, "CE", optionBuyPrice)}
-            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-blue-600/30 flex items-center justify-center gap-1.5 transition-all transform active:scale-95 cursor-pointer"
-          >
-            <Zap className="w-4 h-4 stroke-[3]" />
-            <span>⚡ Apply Setup to Journal</span>
-          </button>
+        {/* Card 3: Highest Call OI (Resistance Ceiling) */}
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Major Resistance (Call OI)</span>
+            <TrendingDown className="w-4 h-4 text-rose-400" />
+          </div>
+          <div className="text-3xl font-black text-rose-400 font-mono">
+            {highestCallOI}
+          </div>
+          <p className="text-[11px] text-slate-400 font-medium">
+            Aggressive Call Writing ceiling zone.
+          </p>
+        </div>
+
+        {/* Card 4: Highest Put OI (Support Floor) */}
+        <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Major Support (Put OI)</span>
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-3xl font-black text-emerald-400 font-mono">
+            {highestPutOI}
+          </div>
+          <p className="text-[11px] text-slate-400 font-medium">
+            Institutional Put Writing floor zone.
+          </p>
         </div>
 
       </div>
