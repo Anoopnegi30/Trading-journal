@@ -360,6 +360,61 @@ export default {
       }
     }
 
+    // ==========================================
+    // Real-Time Live Indian Market Ticker Route
+    // ==========================================
+    if (url.pathname === '/api/market-ticker') {
+      try {
+        const indices = [
+          { symbol: '^NSEI', name: 'Nifty 50' },
+          { symbol: '^NSEBANK', name: 'Nifty Bank' },
+          { symbol: '^BSESN', name: 'BSE Sensex' },
+          { symbol: '^CNXIT', name: 'Nifty IT' },
+          { symbol: '^CNXPHARMA', name: 'Nifty Pharma' },
+          { symbol: '^CNXMETAL', name: 'Nifty Metal' },
+          { symbol: '^CNXAUTO', name: 'Nifty Auto' }
+        ];
+
+        const tickerPromises = indices.map(async (item) => {
+          try {
+            const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=1d`, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+            });
+            if (!res.ok) return null;
+            const data: any = await res.json();
+            const meta = data.chart?.result?.[0]?.meta;
+            if (!meta) return null;
+            const price = Number(meta.regularMarketPrice || 0);
+            const changePercent = Number(meta.regularMarketChangePercent || 0);
+            return {
+              symbol: item.name,
+              name: item.name,
+              value: price,
+              change: Number((price * (changePercent / 100)).toFixed(2)),
+              changePercent: Number(changePercent.toFixed(2))
+            };
+          } catch (e) {
+            return null;
+          }
+        });
+
+        const results = (await Promise.all(tickerPromises)).filter(Boolean);
+
+        return new Response(JSON.stringify({ success: true, ticker: results }), {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=30'
+          }
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+
     // Serve Frontend Static Assets
     return env.ASSETS.fetch(request);
   }

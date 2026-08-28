@@ -367,20 +367,24 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [theme]);
 
-  // Subtle live ticker fluctuation simulation
+  // Real-time live Indian market indices ticker fetch
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTicker(prev => prev.map(item => {
-        const delta = (Math.random() - 0.49) * 0.05;
-        const newPercent = Number((item.changePercent + delta).toFixed(2));
-        const newValue = Number((item.value * (1 + delta / 100)).toFixed(2));
-        return {
-          ...item,
-          value: newValue,
-          changePercent: newPercent
-        };
-      }));
-    }, 4000);
+    const fetchLiveTicker = async () => {
+      try {
+        const res = await fetch('/api/market-ticker');
+        if (res.ok) {
+          const data: any = await res.json();
+          if (data.success && Array.isArray(data.ticker) && data.ticker.length > 0) {
+            setTicker(data.ticker);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch live market ticker:', e);
+      }
+    };
+
+    fetchLiveTicker();
+    const interval = setInterval(fetchLiveTicker, 45000); // refresh every 45s
     return () => clearInterval(interval);
   }, []);
 
