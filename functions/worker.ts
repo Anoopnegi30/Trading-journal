@@ -94,6 +94,7 @@ export default {
           // For Option Buyer: Profit = (Sell - Buy) * Qty
           const isOptionBuying = sym.toUpperCase().includes('CE') || sym.toUpperCase().includes('PE') || group.buys.length > 0;
           const entryPrice = isOptionBuying ? avgBuyPrice : (avgSellPrice || avgBuyPrice);
+          const exitPrice = isOptionBuying ? avgSellPrice : avgBuyPrice;
           // Exact Indian F&O Brokerage & Government Taxes:
           // Brokerage: ₹20/order (Buy: ₹20 + Sell: ₹20 = ₹40)
           // STT: 0.0625% on sell premium turnover
