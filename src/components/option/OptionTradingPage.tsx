@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useTradeContext } from "../../context/TradeContext";
 import { 
   Zap, 
@@ -16,7 +16,9 @@ import {
   Cpu, 
   Target, 
   ShieldCheck,
-  Radio
+  Radio,
+  BarChart2,
+  Gauge
 } from "lucide-react";
 import { formatINR } from "../../utils/calculations";
 
@@ -117,6 +119,114 @@ export const OptionTradingPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [selectedIndex]);
 
+  // =========================================================================
+  // 🧭 DYNAMIC DIRECTIONAL PROBABILITY CALCULATION (Synthesizes All Data)
+  // =========================================================================
+  const directionalProbabilities = useMemo(() => {
+    let bullScore = 35;
+    let sideScore = 35;
+    let bearScore = 30;
+
+    // 1. PCR Weight (Normal: 0.8 - 1.2)
+    if (pcr > 1.25) {
+      bullScore += 22;
+      bearScore -= 14;
+    } else if (pcr > 1.02) {
+      bullScore += 12;
+      sideScore += 5;
+      bearScore -= 8;
+    } else if (pcr < 0.78) {
+      bearScore += 22;
+      bullScore -= 14;
+    } else if (pcr < 0.95) {
+      bearScore += 12;
+      bullScore -= 8;
+    } else {
+      sideScore += 15;
+    }
+
+    // 2. Trend & Change % Weight
+    if (changePercent > 0.4) {
+      bullScore += 16;
+      bearScore -= 10;
+    } else if (changePercent > 0.05) {
+      bullScore += 8;
+      bearScore -= 5;
+    } else if (changePercent < -0.4) {
+      bearScore += 16;
+      bullScore -= 10;
+    } else if (changePercent < -0.05) {
+      bearScore += 8;
+      bullScore -= 5;
+    } else {
+      sideScore += 10;
+    }
+
+    // 3. Volatility / India VIX Weight
+    if (vix < 12) {
+      sideScore += 18;
+      bullScore -= 6;
+      bearScore -= 6;
+    } else if (vix > 16) {
+      sideScore -= 15;
+      if (changePercent >= 0) bullScore += 15;
+      else bearScore += 15;
+    }
+
+    // 4. Spot Price vs Max Pain Pull
+    const painDist = spotPrice - maxPain;
+    if (painDist < -config.strikeStep * 0.6) {
+      bullScore += 10; // Upward mean-reversion pull toward Max Pain
+    } else if (painDist > config.strikeStep * 0.6) {
+      bearScore += 10; // Downward drag toward Max Pain
+    } else {
+      sideScore += 12;
+    }
+
+    // Normalize to 100%
+    const total = Math.max(1, bullScore + sideScore + bearScore);
+    const bullish = Math.max(5, Math.round((bullScore / total) * 100));
+    const bearish = Math.max(5, Math.round((bearScore / total) * 100));
+    const sideways = Math.max(5, 100 - bullish - bearish);
+
+    let dominant = "Sideways / Range-Bound";
+    let dominantColor = "text-amber-400";
+    let dominantBg = "bg-amber-500/15 border-amber-500/30";
+    let biasText = `Compression regime (VIX ${vix}). Option writers pinning price near ${maxPain}. Prefer spread scalps at boundaries.`;
+
+    if (bullish >= 50) {
+      dominant = "Strong Bullish Momentum";
+      dominantColor = "text-emerald-400";
+      dominantBg = "bg-emerald-500/15 border-emerald-500/30";
+      biasText = `Institutional put accumulation & strong PCR (${pcr}). Targeting upside breakout toward ${highestCallOI}.`;
+    } else if (bearish >= 50) {
+      dominant = "Strong Bearish Breakdown";
+      dominantColor = "text-rose-400";
+      dominantBg = "bg-rose-500/15 border-rose-500/30";
+      biasText = `Heavy call writing ceiling & low PCR (${pcr}). Higher probability of test toward ${highestPutOI} demand floor.`;
+    } else if (bullish > bearish && bullish >= 38) {
+      dominant = "Mild Bullish (Accumulation on Dips)";
+      dominantColor = "text-emerald-400";
+      dominantBg = "bg-emerald-500/15 border-emerald-500/30";
+      biasText = `Put writers defending ${highestPutOI} base. Favour long ATM scalp entries on pullbacks with strict SL.`;
+    } else if (bearish > bullish && bearish >= 38) {
+      dominant = "Mild Bearish (Sell on Rise)";
+      dominantColor = "text-rose-400";
+      dominantBg = "bg-rose-500/15 border-rose-500/30";
+      biasText = `Call writers active at ${highestCallOI}. Guard against upside rejections near overhead resistance.`;
+    }
+
+    return {
+      bullish,
+      sideways,
+      bearish,
+      dominant,
+      dominantColor,
+      dominantBg,
+      biasText
+    };
+  }, [pcr, changePercent, vix, spotPrice, maxPain, config.strikeStep, highestCallOI, highestPutOI]);
+
   // Position sizing calculations
   const maxRiskAmount = Math.round(calcCapital * (riskPercent / 100));
   const riskPerLot = stopLossPoints * config.lotSize;
@@ -156,7 +266,7 @@ export const OptionTradingPage: React.FC = () => {
       mistakes: [],
       followedPlan: true,
       followedRisk: true,
-      notes: `Institutional Scalp on ${config.name} ${strike} ${type}. Risk: ₹${totalActualRisk}, Target: ₹${target2Reward}. Source: ${dataSource}.`,
+      notes: `Institutional Scalp on ${config.name} ${strike} ${type}. Risk: ₹${totalActualRisk}, Target: ₹${target2Reward}. Source: ${dataSource}. Direction: ${directionalProbabilities.dominant}.`,
       analysis: "Confluence of Demand FVG zone, EMA 9/15 crossover and VWAP breakout.",
       createdAt: new Date().toISOString()
     });
@@ -208,6 +318,113 @@ export const OptionTradingPage: React.FC = () => {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 🧭 REAL-TIME MARKET DIRECTIONAL PROBABILITY PERCENTAGE BAR */}
+      {/* ========================================================================= */}
+      <div className="p-6 rounded-3xl bg-gradient-to-br from-[#111a2e] via-[#142347] to-[#111a2e] light:bg-white border-2 border-blue-500/30 shadow-2xl space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#1e2942] pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
+              <Compass className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-black text-white light:text-slate-900 tracking-tight">
+                  AI Market Direction Probability Meter ({config.name})
+                </h3>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${directionalProbabilities.dominantBg} ${directionalProbabilities.dominantColor} flex items-center gap-1`}>
+                  <Sparkles className="w-3 h-3" />
+                  <span>{directionalProbabilities.dominant}</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Multi-Factor Confluence: Spot Trend ({changePercent}%), Put-Call Ratio ({pcr}), India VIX ({vix}), Max Pain ({maxPain}), & OI Shifts
+              </p>
+            </div>
+          </div>
+
+          {/* Percentage Badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-black px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono">
+              🟢 Bullish: {directionalProbabilities.bullish}%
+            </span>
+            <span className="text-xs font-black px-3 py-1 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono">
+              🟡 Range: {directionalProbabilities.sideways}%
+            </span>
+            <span className="text-xs font-black px-3 py-1 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 font-mono">
+              🔴 Bearish: {directionalProbabilities.bearish}%
+            </span>
+          </div>
+        </div>
+
+        {/* Multi-Segment Directional Progress Bar */}
+        <div className="space-y-1.5">
+          <div className="w-full h-6 bg-[#0a101f] rounded-2xl overflow-hidden p-1 border border-[#23355b] flex items-center gap-1 shadow-inner">
+            {/* Bullish Segment */}
+            <div
+              style={{ width: `${directionalProbabilities.bullish}%` }}
+              className="h-full bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400 rounded-xl transition-all duration-500 flex items-center justify-center shadow-lg shadow-emerald-500/20"
+            >
+              {directionalProbabilities.bullish >= 14 && (
+                <span className="text-[10px] font-black text-white drop-shadow">
+                  {directionalProbabilities.bullish}%
+                </span>
+              )}
+            </div>
+
+            {/* Sideways Segment */}
+            <div
+              style={{ width: `${directionalProbabilities.sideways}%` }}
+              className="h-full bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-400 rounded-xl transition-all duration-500 flex items-center justify-center shadow-lg shadow-amber-500/20"
+            >
+              {directionalProbabilities.sideways >= 14 && (
+                <span className="text-[10px] font-black text-white drop-shadow">
+                  {directionalProbabilities.sideways}%
+                </span>
+              )}
+            </div>
+
+            {/* Bearish Segment */}
+            <div
+              style={{ width: `${directionalProbabilities.bearish}%` }}
+              className="h-full bg-gradient-to-r from-rose-600 via-red-500 to-rose-400 rounded-xl transition-all duration-500 flex items-center justify-center shadow-lg shadow-rose-500/20"
+            >
+              {directionalProbabilities.bearish >= 14 && (
+                <span className="text-[10px] font-black text-white drop-shadow">
+                  {directionalProbabilities.bearish}%
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Labels under the bar */}
+          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 font-medium">
+            <span className="flex items-center gap-1 text-emerald-400 font-bold">
+              <TrendingUp className="w-3.5 h-3.5" /> Bullish Drive ({highestCallOI})
+            </span>
+            <span className="flex items-center gap-1 text-amber-400 font-bold">
+              <Activity className="w-3.5 h-3.5" /> Max Pain Pin ({maxPain})
+            </span>
+            <span className="flex items-center gap-1 text-rose-400 font-bold">
+              <TrendingDown className="w-3.5 h-3.5" /> Bearish Floor ({highestPutOI})
+            </span>
+          </div>
+        </div>
+
+        {/* AI Analysis Insight */}
+        <div className="p-3.5 rounded-2xl bg-[#0e172a]/90 border border-[#1e2d4d] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span className="text-slate-300">
+              <strong className="text-white">Smart Money Read:</strong> {directionalProbabilities.biasText}
+            </span>
+          </div>
+          <span className="text-[10px] font-mono text-cyan-400 shrink-0 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+            CONFIDENCE: {Math.max(directionalProbabilities.bullish, directionalProbabilities.sideways, directionalProbabilities.bearish)}%
+          </span>
         </div>
       </div>
 
