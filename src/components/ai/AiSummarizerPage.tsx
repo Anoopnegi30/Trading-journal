@@ -19,7 +19,8 @@ import {
   HelpCircle,
   BarChart3,
   PlusCircle,
-  RefreshCw
+  RefreshCw,
+  Calendar
 } from "lucide-react";
 import { formatINR } from "../../utils/calculations";
 
@@ -60,19 +61,55 @@ interface AnalysisReport {
 }
 
 export const AiSummarizerPage: React.FC = () => {
-  const { trades, marketFilter, setMarketFilter, challenge, setIsNewTradeModalOpen, syncFromDhan } = useTradeContext();
+  const { trades, marketFilter, setMarketFilter, challenge, setIsNewTradeModalOpen } = useTradeContext();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("30 Days");
+  
+  // Custom Date Range State
+  const todayStr = new Date().toISOString().split("T")[0];
+  const firstDayMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+  const [customStartDate, setCustomStartDate] = useState<string>(firstDayMonthStr);
+  const [customEndDate, setCustomEndDate] = useState<string>(todayStr);
+
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analyzingProgress, setAnalyzingProgress] = useState<number>(0);
   const [analyzingStep, setAnalyzingStep] = useState<string>("Recognizing Patterns");
   const [analyzingSubtitle, setAnalyzingSubtitle] = useState<string>("Identifying trading behaviors and market correlations");
   const [showBenchmarkIfEmpty, setShowBenchmarkIfEmpty] = useState<boolean>(false);
 
-  // Dynamic Analysis Generation based 100% on Real Trades
-  const report = useMemo<AnalysisReport | null>(() => {
-    // Filter trades by market type if selected
-    const filteredTrades = trades.filter(t => !marketFilter || marketFilter === "All" || t.marketType === marketFilter);
+  // Period label for natural phrasing
+  const periodLabel = useMemo(() => {
+    if (selectedPeriod === "30 Days") return "last 30 days";
+    if (selectedPeriod === "60 Days") return "last 60 days";
+    if (selectedPeriod === "90 Days") return "last 90 days";
+    return `selected custom period (${customStartDate} to ${customEndDate})`;
+  }, [selectedPeriod, customStartDate, customEndDate]);
 
+  // Dynamic Analysis Generation based 100% on Real Trades within Date Range
+  const filteredTrades = useMemo(() => {
+    let list = trades.filter(t => !marketFilter || marketFilter === "All" || t.marketType === marketFilter);
+
+    const now = new Date();
+    if (selectedPeriod === "30 Days") {
+      const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      list = list.filter(t => !t.date || t.date >= cutoff);
+    } else if (selectedPeriod === "60 Days") {
+      const cutoff = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      list = list.filter(t => !t.date || t.date >= cutoff);
+    } else if (selectedPeriod === "90 Days") {
+      const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      list = list.filter(t => !t.date || t.date >= cutoff);
+    } else if (selectedPeriod === "Custom") {
+      if (customStartDate) {
+        list = list.filter(t => !t.date || t.date >= customStartDate);
+      }
+      if (customEndDate) {
+        list = list.filter(t => !t.date || t.date <= customEndDate);
+      }
+    }
+    return list;
+  }, [trades, marketFilter, selectedPeriod, customStartDate, customEndDate]);
+
+  const report = useMemo<AnalysisReport | null>(() => {
     // If trader has trades logged, synthesize real calculations
     if (filteredTrades.length > 0) {
       const totalTrades = filteredTrades.length;
@@ -134,7 +171,7 @@ export const AiSummarizerPage: React.FC = () => {
       const topMistake = allMistakes[0] || null;
 
       // Dynamic Performance Summary Text
-      const perfText = `You have taken ${totalTrades} trade(s) in the last ${selectedPeriod}, generating a net P&L of ${formatINR(totalProfit)} with a win rate of ${winRate}%. ` +
+      const perfText = `You have taken ${totalTrades} trade(s) in the ${periodLabel}, generating a net P&L of ${formatINR(totalProfit)} with a win rate of ${winRate}%. ` +
         (winCount > 0 && avgWin > 0 ? `Your average winning trade is ${formatINR(avgWin)} ` : "") +
         (lossCount > 0 && avgLoss > 0 ? `against an average loss of -${formatINR(avgLoss)}, giving a risk-to-reward ratio of 1:${riskRewardRatio}. ` : ". ") +
         `Capital efficiency is at ${capitalEfficiency}% based on your account size. ` +
@@ -331,7 +368,7 @@ export const AiSummarizerPage: React.FC = () => {
     }
 
     return null;
-  }, [trades, marketFilter, selectedPeriod, challenge, showBenchmarkIfEmpty]);
+  }, [filteredTrades, periodLabel, challenge, showBenchmarkIfEmpty]);
 
   // Handle Triggering the Animated AI Diagnostic Engine
   const handleGenerateSummary = () => {
@@ -360,7 +397,7 @@ export const AiSummarizerPage: React.FC = () => {
 
     setTimeout(() => {
       setIsAnalyzing(false);
-      if (trades.length === 0) {
+      if (filteredTrades.length === 0) {
         setShowBenchmarkIfEmpty(true);
       }
     }, 2200);
@@ -388,7 +425,7 @@ export const AiSummarizerPage: React.FC = () => {
               Generate AI Summary
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Analyze your last {selectedPeriod.toLowerCase()} of trading performance ({trades.length} active trade{trades.length !== 1 ? "s" : ""})
+              Analyze your performance for {periodLabel} ({filteredTrades.length} active trade{filteredTrades.length !== 1 ? "s" : ""})
             </p>
           </div>
 
@@ -418,10 +455,18 @@ export const AiSummarizerPage: React.FC = () => {
         </div>
 
         {/* Period Selector Pills */}
-        <div className="space-y-1.5 pt-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-            Period
-          </span>
+        <div className="space-y-3 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+              Period
+            </span>
+            {selectedPeriod === "Custom" && (
+              <span className="text-[11px] font-semibold text-blue-400">
+                Select your custom date range below
+              </span>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             {(["30 Days", "60 Days", "90 Days", "Custom"] as PeriodType[]).map((period) => {
               const isSelected = selectedPeriod === period;
@@ -440,6 +485,50 @@ export const AiSummarizerPage: React.FC = () => {
               );
             })}
           </div>
+
+          {/* 📅 CUSTOM DATE RANGE INPUT PICKER (When Custom is selected) */}
+          {selectedPeriod === "Custom" && (
+            <div className="p-4 rounded-2xl bg-[#16223b]/90 light:bg-slate-50 border border-blue-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-xs text-slate-300 light:text-slate-700 font-bold">
+                <Calendar className="w-4 h-4 text-blue-400" />
+                <span>Date Range:</span>
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400">From:</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-[#111a2e] light:bg-white text-white light:text-slate-900 border border-[#23355b] light:border-slate-300 text-xs font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400">To:</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-[#111a2e] light:bg-white text-white light:text-slate-900 border border-[#23355b] light:border-slate-300 text-xs font-mono focus:outline-none"
+                  />
+                </div>
+
+                {/* Quick Range Presets */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomStartDate(firstDayMonthStr);
+                    setCustomEndDate(todayStr);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-[#111a2e] light:bg-white hover:bg-blue-600 hover:text-white text-[10px] font-bold text-slate-400 border border-[#23355b] transition-all cursor-pointer"
+                >
+                  This Month
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -662,7 +751,7 @@ export const AiSummarizerPage: React.FC = () => {
           </div>
           <div className="space-y-1 max-w-md mx-auto">
             <h3 className="text-base font-bold text-white light:text-slate-900">
-              No Trades Logged for {selectedPeriod} ({marketFilter})
+              No Trades Logged for {periodLabel} ({marketFilter})
             </h3>
             <p className="text-xs text-slate-400">
               Log your trades or sync from Dhan to let AI evaluate your real performance patterns and psychology.
