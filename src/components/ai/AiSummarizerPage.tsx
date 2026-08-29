@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useTradeContext } from "../../context/TradeContext";
 import { 
   TrendingUp, 
@@ -17,7 +17,9 @@ import {
   Clock,
   ArrowRight,
   HelpCircle,
-  BarChart3
+  BarChart3,
+  PlusCircle,
+  RefreshCw
 } from "lucide-react";
 import { formatINR } from "../../utils/calculations";
 
@@ -35,7 +37,7 @@ interface AnalysisReport {
     riskRewardRatio: number;
     capitalEfficiency: number;
     tradesWithTarget: number;
-    confidenceLevel: number; // e.g. 7.4 out of 10
+    confidenceLevel: number;
     summaryText: string;
   };
   strengths: {
@@ -58,41 +60,42 @@ interface AnalysisReport {
 }
 
 export const AiSummarizerPage: React.FC = () => {
-  const { trades, marketFilter, setMarketFilter, challenge, rules, strategies } = useTradeContext();
+  const { trades, marketFilter, setMarketFilter, challenge, setIsNewTradeModalOpen, syncFromDhan } = useTradeContext();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("30 Days");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analyzingProgress, setAnalyzingProgress] = useState<number>(0);
   const [analyzingStep, setAnalyzingStep] = useState<string>("Recognizing Patterns");
   const [analyzingSubtitle, setAnalyzingSubtitle] = useState<string>("Identifying trading behaviors and market correlations");
+  const [showBenchmarkIfEmpty, setShowBenchmarkIfEmpty] = useState<boolean>(false);
 
-  // Dynamic Analysis Generation based on Real Trades (or benchmark model)
-  const report = useMemo<AnalysisReport>(() => {
+  // Dynamic Analysis Generation based 100% on Real Trades
+  const report = useMemo<AnalysisReport | null>(() => {
     // Filter trades by market type if selected
     const filteredTrades = trades.filter(t => !marketFilter || marketFilter === "All" || t.marketType === marketFilter);
 
     // If trader has trades logged, synthesize real calculations
     if (filteredTrades.length > 0) {
       const totalTrades = filteredTrades.length;
-      const wins = filteredTrades.filter(t => t.pnl > 0);
-      const losses = filteredTrades.filter(t => t.pnl < 0);
-      const totalProfit = filteredTrades.reduce((acc, t) => acc + (t.netPnl || t.pnl), 0);
+      const wins = filteredTrades.filter(t => (t.netPnl || t.pnl) > 0);
+      const losses = filteredTrades.filter(t => (t.netPnl || t.pnl) < 0);
+      const totalProfit = Number(filteredTrades.reduce((acc, t) => acc + (t.netPnl ?? t.pnl ?? 0), 0).toFixed(2));
       const winCount = wins.length;
       const lossCount = losses.length;
       const winRate = Number(((winCount / totalTrades) * 100).toFixed(1));
 
-      const totalWinPnl = wins.reduce((acc, t) => acc + t.pnl, 0);
-      const totalLossPnl = Math.abs(losses.reduce((acc, t) => acc + t.pnl, 0));
+      const totalWinPnl = wins.reduce((acc, t) => acc + (t.netPnl ?? t.pnl ?? 0), 0);
+      const totalLossPnl = Math.abs(losses.reduce((acc, t) => acc + (t.netPnl ?? t.pnl ?? 0), 0));
 
       const avgWin = winCount > 0 ? Number((totalWinPnl / winCount).toFixed(2)) : 0;
       const avgLoss = lossCount > 0 ? Number((totalLossPnl / lossCount).toFixed(2)) : 0;
-      const riskRewardRatio = avgLoss > 0 ? Number((avgWin / avgLoss).toFixed(2)) : (avgWin > 0 ? 3.0 : 1.0);
+      const riskRewardRatio = avgLoss > 0 ? Number((avgWin / avgLoss).toFixed(2)) : (avgWin > 0 ? 2.5 : 1.0);
 
-      const tradesWithTarget = filteredTrades.filter(t => t.target && t.target > 0).length;
-      const totalDeployedCapital = filteredTrades.reduce((acc, t) => acc + (t.totalAmount || (t.entryPrice * t.quantity) || 50000), 0);
-      const userCap = challenge?.startingCapital || 500000;
-      const capitalEfficiency = Math.min(100, Number(((totalDeployedCapital / (userCap * Math.max(1, totalTrades * 0.5))) * 100).toFixed(2))) || 6.04;
+      const tradesWithTarget = filteredTrades.filter(t => t.target && Number(t.target) > 0).length;
+      const totalDeployedCapital = filteredTrades.reduce((acc, t) => acc + (t.totalAmount || (t.entryPrice * t.quantity) || 25000), 0);
+      const userCap = challenge?.startingCapital || 100000;
+      const capitalEfficiency = Math.min(100, Number(((totalDeployedCapital / (userCap * Math.max(1, totalTrades * 0.3))) * 100).toFixed(1))) || 25.0;
 
-      const avgConfidence = Number((filteredTrades.reduce((acc, t) => acc + (t.confidence || 75), 0) / (totalTrades * 10)).toFixed(1));
+      const avgConfidence = Number((filteredTrades.reduce((acc, t) => acc + (t.confidence || 80), 0) / (totalTrades * 10)).toFixed(1));
 
       // Strategy breakdown
       const stratMap = new Map<string, { count: number; wins: number; pnl: number }>();
@@ -100,53 +103,123 @@ export const AiSummarizerPage: React.FC = () => {
         const strat = t.strategy || "General Setup";
         const current = stratMap.get(strat) || { count: 0, wins: 0, pnl: 0 };
         current.count += 1;
-        if (t.pnl > 0) current.wins += 1;
-        current.pnl += (t.netPnl || t.pnl);
+        if ((t.netPnl || t.pnl) > 0) current.wins += 1;
+        current.pnl += (t.netPnl ?? t.pnl ?? 0);
         stratMap.set(strat, current);
       });
 
-      let bestStrat = { name: "Breakout", winRate: 88.9, count: 9, pnl: 88024.77, pf: 25.77 };
-      let worstStrat = { name: "Pullback", winRate: 0, count: 2, loss: 8707.74 };
-
-      const stratList = Array.from(stratMap.entries());
-      if (stratList.length > 0) {
-        stratList.sort((a, b) => b[1].pnl - a[1].pnl);
-        const top = stratList[0];
-        bestStrat = {
-          name: top[0],
-          winRate: Number(((top[1].wins / top[1].count) * 100).toFixed(1)),
-          count: top[1].count,
-          pnl: top[1].pnl,
-          pf: Number((Math.max(1.5, Math.abs(top[1].pnl / 3000))).toFixed(2))
-        };
-        const bottom = stratList[stratList.length - 1];
-        if (bottom[1].pnl < 0) {
-          worstStrat = {
-            name: bottom[0],
-            winRate: Number(((bottom[1].wins / bottom[1].count) * 100).toFixed(1)),
-            count: bottom[1].count,
-            loss: Math.abs(bottom[1].pnl)
-          };
-        }
-      }
+      const stratList = Array.from(stratMap.entries()).sort((a, b) => b[1].pnl - a[1].pnl);
+      const topStrat = stratList[0] || ["General Setup", { count: totalTrades, wins: winCount, pnl: totalProfit }];
+      const bottomStrat = stratList.length > 1 ? stratList[stratList.length - 1] : null;
 
       // Emotion breakdown
       const emotionMap = new Map<string, { count: number; pnl: number }>();
       filteredTrades.forEach(t => {
-        const emo = t.emotion || "Calm";
+        const emo = t.emotion || "Disciplined";
         const cur = emotionMap.get(emo) || { count: 0, pnl: 0 };
         cur.count += 1;
-        cur.pnl += (t.netPnl || t.pnl);
+        cur.pnl += (t.netPnl ?? t.pnl ?? 0);
         emotionMap.set(emo, cur);
       });
-      const topEmotion = Array.from(emotionMap.entries()).sort((a, b) => b[1].count - a[1].count)[0] || ["Calm", { count: 10, pnl: 96072.9 }];
+      const topEmotion = Array.from(emotionMap.entries()).sort((a, b) => b[1].count - a[1].count)[0] || ["Disciplined", { count: totalTrades, pnl: totalProfit }];
+
+      // Emotional Leaks
+      const emotionalLeaks = filteredTrades.filter(t => ["FOMO", "Greed", "Revenge", "Anxious", "Impatient"].includes(t.emotion));
 
       // Mistakes breakdown
       const allMistakes: string[] = [];
       filteredTrades.forEach(t => {
         if (Array.isArray(t.mistakes)) allMistakes.push(...t.mistakes);
       });
-      const topMistake = allMistakes[0] || "Exited Too Early";
+      const topMistake = allMistakes[0] || null;
+
+      // Dynamic Performance Summary Text
+      const perfText = `You have taken ${totalTrades} trade(s) in the last ${selectedPeriod}, generating a net P&L of ${formatINR(totalProfit)} with a win rate of ${winRate}%. ` +
+        (winCount > 0 && avgWin > 0 ? `Your average winning trade is ${formatINR(avgWin)} ` : "") +
+        (lossCount > 0 && avgLoss > 0 ? `against an average loss of -${formatINR(avgLoss)}, giving a risk-to-reward ratio of 1:${riskRewardRatio}. ` : ". ") +
+        `Capital efficiency is at ${capitalEfficiency}% based on your account size. ` +
+        (tradesWithTarget === totalTrades 
+          ? "All trades had planned targets set before entry." 
+          : `${totalTrades - tradesWithTarget} trade(s) were entered without a predefined target price.`);
+
+      // Dynamic Strengths
+      const dynamicStrengths = [
+        {
+          id: "s1",
+          text: `Your ${topStrat[0]} strategy is your leading setup: it has a ${Number(((topStrat[1].wins / topStrat[1].count) * 100).toFixed(1))}% win rate across ${topStrat[1].count} trade(s) and generated ${formatINR(topStrat[1].pnl)}.`
+        },
+        {
+          id: "s2",
+          text: `Disciplined Execution: You have maintained high execution standards with a dominant "${topEmotion[0]}" state across ${topEmotion[1].count} trade(s), yielding an average P&L of ${formatINR(Number((topEmotion[1].pnl / topEmotion[1].count).toFixed(2)))}.`
+        },
+        {
+          id: "s3",
+          text: `Risk Management Control: Average trade risk is managed with a realized R:R of 1:${riskRewardRatio}, keeping downside exposure contained.`
+        }
+      ];
+
+      // Dynamic Weaknesses
+      const dynamicWeaknesses = [];
+      if (bottomStrat && bottomStrat[1].pnl < 0) {
+        dynamicWeaknesses.push({
+          id: "w1",
+          text: `Your ${bottomStrat[0]} strategy is currently dragging performance: took ${bottomStrat[1].count} trade(s) with ${formatINR(bottomStrat[1].pnl)} net loss. Review entry criteria for this setup.`
+        });
+      }
+      if (topMistake) {
+        dynamicWeaknesses.push({
+          id: "w2",
+          text: `Mistake recorded: Logged "${topMistake}" across your trades. Maintain post-entry discipline to avoid repeating this mistake.`
+        });
+      }
+      if (tradesWithTarget < totalTrades) {
+        dynamicWeaknesses.push({
+          id: "w3",
+          text: `Missing Target Planning: ${totalTrades - tradesWithTarget} of ${totalTrades} trade(s) did not have a predefined target price set before entry.`
+        });
+      }
+      if (dynamicWeaknesses.length === 0) {
+        dynamicWeaknesses.push({
+          id: "w-clean",
+          text: "No major statistical weaknesses detected across your active trades. Continue maintaining your risk parameters."
+        });
+      }
+
+      // Dynamic Actions
+      const dynamicActions = [];
+      if (bottomStrat && bottomStrat[1].pnl < 0) {
+        dynamicActions.push({
+          id: "a1",
+          text: `First, pause or refine the ${bottomStrat[0]} strategy until backtesting confirms higher expectancy.`,
+          priority: "HIGH PRIORITY" as const
+        });
+      }
+      if (tradesWithTarget < totalTrades) {
+        dynamicActions.push({
+          id: "a2",
+          text: "Second, ensure every single trade has a clear target price calculated before entry to lock in planned risk-to-reward ratios.",
+          priority: "CRITICAL" as const
+        });
+      }
+      if (topMistake) {
+        dynamicActions.push({
+          id: "a3",
+          text: `Third, create a specific rule in the Rules tab to eliminate the "${topMistake}" execution slip.`
+        });
+      }
+      dynamicActions.push({
+        id: "a4",
+        text: `Fourth, continue focusing on high-probability setups in ${topStrat[0]} and log all trades right after closing.`
+      });
+
+      // Dynamic Psychology
+      let psychologyText = "";
+      if (emotionalLeaks.length > 0) {
+        const leakNames = Array.from(new Set(emotionalLeaks.map(t => t.emotion))).join(", ");
+        psychologyText = `Detected ${emotionalLeaks.length} trade(s) influenced by emotional pressure (${leakNames}). Your primary emotion is "${topEmotion[0]}" across ${topEmotion[1].count} trade(s). Step away from the screen for 10 minutes if feeling anxious or rushed.`;
+      } else {
+        psychologyText = `Your psychological discipline is strong: dominant emotion is "${topEmotion[0]}" across all ${topEmotion[1].count} trade(s) with an average confidence rating of ${avgConfidence}/10. No revenge or FOMO trades detected.`;
+      }
 
       return {
         performance: {
@@ -161,153 +234,104 @@ export const AiSummarizerPage: React.FC = () => {
           capitalEfficiency,
           tradesWithTarget,
           confidenceLevel: avgConfidence,
-          summaryText: `You have done an ${totalProfit >= 0 ? "excellent" : "improving"} job in the last ${selectedPeriod}, making a total profit of ${formatINR(totalProfit)} from ${totalTrades} trades. Your win rate of ${winRate}% is ${winRate >= 60 ? "very strong" : "developing"}, meaning you win more than ${Math.round(winRate / 10)} out of every 10 trades you take. The average profit per winning trade (${formatINR(avgWin)}) is ${avgWin >= avgLoss ? "much bigger" : "comparable"} than your average loss (-${formatINR(avgLoss)}), which shows you are letting your winners run and cutting your losses short. Your risk-to-reward ratio of ${riskRewardRatio} is outstanding, meaning for every ₹1 you risk, you are making ₹${riskRewardRatio} in profit. However, your capital efficiency is only ${capitalEfficiency}%, which means you are not using your full trading capital very actively, and you had ${totalTrades - tradesWithTarget} trades with targets set, which is a missed opportunity for planning.`
+          summaryText: perfText
         },
-        strengths: [
-          {
-            id: "s1",
-            text: `Your ${bestStrat.name} strategy is your biggest strength: it has a ${bestStrat.winRate}% win rate from ${bestStrat.count} trades and earned you ${formatINR(bestStrat.pnl)}, which is a huge profit factor of ${bestStrat.pf}.`
-          },
-          {
-            id: "s2",
-            text: `You follow your trading rules perfectly: you have 100% adherence to all key rules, including booking partial profits and using fixed quantity, which added over ₹28,000 in extra impact.`
-          },
-          {
-            id: "s3",
-            text: `You stay calm and disciplined: your dominant emotion is "${topEmotion[0]}" for ${topEmotion[1].count} trades, and those trades gave you an average profit of ${formatINR(Number((topEmotion[1].pnl / Math.max(1, topEmotion[1].count)).toFixed(2)))} with confidence of ${avgConfidence}/10.`
-          },
-          {
-            id: "s4",
-            text: `Your risk management is excellent: your average loss is only ${formatINR(avgLoss)}, and your realized risk-to-reward ratio is 1:${riskRewardRatio}, meaning your profits are massively bigger than your losses.`
-          }
-        ],
-        weaknesses: [
-          {
-            id: "w1",
-            text: `Your ${worstStrat.name} strategy is not working at all: you took ${worstStrat.count} trades with a ${worstStrat.winRate}% win rate, losing ${formatINR(worstStrat.loss)}, so this strategy needs to be reviewed or stopped.`
-          },
-          {
-            id: "w2",
-            text: `You made ${allMistakes.length || 4} mistakes this period compared to zero previously, showing a recent slip in discipline, especially with one "${topMistake}" mistake that cost you ₹6,122.15.`
-          },
-          {
-            id: "w3",
-            text: `You are not setting target prices for your trades: your target achievement is ${Math.round((tradesWithTarget / totalTrades) * 100)}%, meaning you are not planning where to take profit, which can lead to leaving money on the table.`
-          },
-          {
-            id: "w4",
-            text: `Your capital efficiency is low at ${capitalEfficiency}%: you deployed only ₹2.4 lakhs out of a much larger capital, meaning you are not using your money to its full potential.`
-          }
-        ],
-        actions: [
-          {
-            id: "a1",
-            text: `First, stop using the ${worstStrat.name} strategy completely until you can study why it failed and find a better entry method for those setups.`,
-            priority: "HIGH PRIORITY"
-          },
-          {
-            id: "a2",
-            text: `Second, start setting a clear target price for every trade before you enter, so you have a plan for taking profits and can track your target achievement.`,
-            priority: "CRITICAL"
-          },
-          {
-            id: "a3",
-            text: `Third, review your "${topMistake}" mistake: note down the exact reason you left the trade early and create a rule to hold until your stop-loss or target is hit.`
-          },
-          {
-            id: "a4",
-            text: `Fourth, work on increasing your capital efficiency by taking more high-probability trades each week, but only when your setup is perfect, not just to be active.`
-          }
-        ],
+        strengths: dynamicStrengths,
+        weaknesses: dynamicWeaknesses,
+        actions: dynamicActions,
         psychology: [
           {
             id: "p1",
-            text: `Your emotional state is very healthy, with "${topEmotion[0]}" being your dominant emotion and giving you the best results. However, your confidence score of ${avgConfidence}/10 is good but not perfect, and you had 3 trades with "Unknown" emotion that still made good profits, which suggests you might be trading on autopilot.`
+            text: psychologyText
           }
         ]
       };
     }
 
-    // Default Benchmark Model (Matches user screenshot 100%)
-    return {
-      performance: {
-        totalProfit: 146167.65,
-        totalTrades: 17,
-        winRate: 70.6,
-        winCount: 12,
-        lossCount: 5,
-        avgWin: 13593.23,
-        avgLoss: 4237.79,
-        riskRewardRatio: 4.41,
-        capitalEfficiency: 6.04,
-        tradesWithTarget: 0,
-        confidenceLevel: 7.4,
-        summaryText: "You have done an excellent job in the last 30 days, making a total profit of ₹1,46,167.65 from 17 trades. Your win rate of 70.6% is very strong, meaning you win more than 7 out of every 10 trades you take. The average profit per winning trade (₹13,593.23) is much bigger than your average loss (₹-4,237.79), which shows you are letting your winners run and cutting your losses short. Your risk-to-reward ratio of 4.41 is outstanding, meaning for every ₹1 you risk, you are making ₹4.41 in profit. However, your capital efficiency is only 6.04%, which means you are not using your full trading capital very actively, and you had zero trades with targets set, which is a missed opportunity for planning."
-      },
-      strengths: [
-        {
-          id: 's1',
-          text: 'Your breakout strategy is your biggest strength: it has a 88.9% win rate from 9 trades and earned you ₹88,024.77, which is a huge profit factor of 25.77.'
+    // If 0 trades and user wants benchmark demo
+    if (showBenchmarkIfEmpty) {
+      return {
+        performance: {
+          totalProfit: 146167.65,
+          totalTrades: 17,
+          winRate: 70.6,
+          winCount: 12,
+          lossCount: 5,
+          avgWin: 13593.23,
+          avgLoss: 4237.79,
+          riskRewardRatio: 4.41,
+          capitalEfficiency: 6.04,
+          tradesWithTarget: 0,
+          confidenceLevel: 7.4,
+          summaryText: "You have done an excellent job in the last 30 days, making a total profit of ₹1,46,167.65 from 17 trades. Your win rate of 70.6% is very strong, meaning you win more than 7 out of every 10 trades you take. The average profit per winning trade (₹13,593.23) is much bigger than your average loss (₹-4,237.79), which shows you are letting your winners run and cutting your losses short. Your risk-to-reward ratio of 4.41 is outstanding, meaning for every ₹1 you risk, you are making ₹4.41 in profit. However, your capital efficiency is only 6.04%, which means you are not using your full trading capital very actively, and you had zero trades with targets set, which is a missed opportunity for planning."
         },
-        {
-          id: 's2',
-          text: 'You follow your trading rules perfectly: you have 100% adherence to all three key rules, including booking partial profits and using fixed quantity, which added over ₹28,000 in extra impact.'
-        },
-        {
-          id: 's3',
-          text: "You stay calm and disciplined: your dominant emotion is 'Calm' for 10 trades, and those trades gave you an average profit of ₹9,607.29 with confidence of 9/10."
-        },
-        {
-          id: 's4',
-          text: 'Your risk management is excellent: your average loss is only ₹4,237.79, and your realized risk-to-reward ratio is 1:2239.51, meaning your profits are massively bigger than your losses.'
-        }
-      ],
-      weaknesses: [
-        {
-          id: 'w1',
-          text: 'Your pullback strategy is not working at all: you took 2 trades with a 0% win rate, losing ₹8,707.74, so this strategy needs to be reviewed or stopped.'
-        },
-        {
-          id: 'w2',
-          text: "You made 4 mistakes this week compared to zero last week, showing a recent slip in discipline, especially with one 'Exited Too Early' mistake that cost you ₹6,122.15."
-        },
-        {
-          id: 'w3',
-          text: 'You are not setting target prices for your trades: your target achievement is 0%, meaning you are not planning where to take profit, which can lead to leaving money on the table.'
-        },
-        {
-          id: 'w4',
-          text: 'Your capital efficiency is low at 6.04%: you deployed only ₹2.4 lakhs out of a much larger capital, meaning you are not using your money to its full potential.'
-        }
-      ],
-      actions: [
-        {
-          id: 'a1',
-          text: 'First, stop using the pullback strategy completely until you can study why it failed and find a better entry method for those setups.',
-          priority: 'HIGH PRIORITY'
-        },
-        {
-          id: 'a2',
-          text: 'Second, start setting a clear target price for every trade before you enter, so you have a plan for taking profits and can track your target achievement.',
-          priority: 'CRITICAL'
-        },
-        {
-          id: 'a3',
-          text: "Third, review your 'Exited Too Early' mistake: note down the exact reason you left the trade early and create a rule to hold until your stop-loss or target is hit."
-        },
-        {
-          id: 'a4',
-          text: 'Fourth, work on increasing your capital efficiency by taking more high-probability trades each week, but only when your setup is perfect, not just to be active.'
-        }
-      ],
-      psychology: [
-        {
-          id: 'p1',
-          text: "Your emotional state is very healthy, with 'Calm' being your dominant emotion and giving you the best results. However, your confidence score of 7.4/10 is good but not perfect, and you had 3 trades with 'Unknown' emotion that still made good profits, which suggests you might be trading on autopilot."
-        }
-      ]
-    };
-  }, [trades, marketFilter, selectedPeriod, challenge]);
+        strengths: [
+          {
+            id: 's1',
+            text: 'Your breakout strategy is your biggest strength: it has a 88.9% win rate from 9 trades and earned you ₹88,024.77, which is a huge profit factor of 25.77.'
+          },
+          {
+            id: 's2',
+            text: 'You follow your trading rules perfectly: you have 100% adherence to all three key rules, including booking partial profits and using fixed quantity, which added over ₹28,000 in extra impact.'
+          },
+          {
+            id: 's3',
+            text: "You stay calm and disciplined: your dominant emotion is 'Calm' for 10 trades, and those trades gave you an average profit of ₹9,607.29 with confidence of 9/10."
+          },
+          {
+            id: 's4',
+            text: 'Your risk management is excellent: your average loss is only ₹4,237.79, and your realized risk-to-reward ratio is 1:2239.51, meaning your profits are massively bigger than your losses.'
+          }
+        ],
+        weaknesses: [
+          {
+            id: 'w1',
+            text: 'Your pullback strategy is not working at all: you took 2 trades with a 0% win rate, losing ₹8,707.74, so this strategy needs to be reviewed or stopped.'
+          },
+          {
+            id: 'w2',
+            text: "You made 4 mistakes this week compared to zero last week, showing a recent slip in discipline, especially with one 'Exited Too Early' mistake that cost you ₹6,122.15."
+          },
+          {
+            id: 'w3',
+            text: 'You are not setting target prices for your trades: your target achievement is 0%, meaning you are not planning where to take profit, which can lead to leaving money on the table.'
+          },
+          {
+            id: 'w4',
+            text: 'Your capital efficiency is low at 6.04%: you deployed only ₹2.4 lakhs out of a much larger capital, meaning you are not using your money to its full potential.'
+          }
+        ],
+        actions: [
+          {
+            id: 'a1',
+            text: 'First, stop using the pullback strategy completely until you can study why it failed and find a better entry method for those setups.',
+            priority: 'HIGH PRIORITY'
+          },
+          {
+            id: 'a2',
+            text: 'Second, start setting a clear target price for every trade before you enter, so you have a plan for taking profits and can track your target achievement.',
+            priority: 'CRITICAL'
+          },
+          {
+            id: 'a3',
+            text: "Third, review your 'Exited Too Early' mistake: note down the exact reason you left the trade early and create a rule to hold until your stop-loss or target is hit."
+          },
+          {
+            id: 'a4',
+            text: 'Fourth, work on increasing your capital efficiency by taking more high-probability trades each week, but only when your setup is perfect, not just to be active.'
+          }
+        ],
+        psychology: [
+          {
+            id: 'p1',
+            text: "Your emotional state is very healthy, with 'Calm' being your dominant emotion and giving you the best results. However, your confidence score of 7.4/10 is good but not perfect, and you maintained strong trade discipline throughout the period."
+          }
+        ]
+      };
+    }
+
+    return null;
+  }, [trades, marketFilter, selectedPeriod, challenge, showBenchmarkIfEmpty]);
 
   // Handle Triggering the Animated AI Diagnostic Engine
   const handleGenerateSummary = () => {
@@ -320,23 +344,26 @@ export const AiSummarizerPage: React.FC = () => {
       setAnalyzingProgress(45);
       setAnalyzingStep("Evaluating Risk & Strategy EV");
       setAnalyzingSubtitle("Calculating profit factors, win rates, and drawdowns");
-    }, 700);
+    }, 600);
 
     setTimeout(() => {
       setAnalyzingProgress(75);
       setAnalyzingStep("Diagnosing Psychology & Rules");
       setAnalyzingSubtitle("Detecting emotional leaks, early exits, and discipline score");
-    }, 1400);
+    }, 1200);
 
     setTimeout(() => {
       setAnalyzingProgress(100);
       setAnalyzingStep("Compiling Executive Report");
       setAnalyzingSubtitle("Structuring actionable steps and institutional recommendations");
-    }, 2100);
+    }, 1800);
 
     setTimeout(() => {
       setIsAnalyzing(false);
-    }, 2600);
+      if (trades.length === 0) {
+        setShowBenchmarkIfEmpty(true);
+      }
+    }, 2200);
   };
 
   return (
@@ -361,7 +388,7 @@ export const AiSummarizerPage: React.FC = () => {
               Generate AI Summary
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Analyze your last {selectedPeriod.toLowerCase()} of trading performance
+              Analyze your last {selectedPeriod.toLowerCase()} of trading performance ({trades.length} active trade{trades.length !== 1 ? "s" : ""})
             </p>
           </div>
 
@@ -451,7 +478,7 @@ export const AiSummarizerPage: React.FC = () => {
             </span>
           </div>
         </div>
-      ) : (
+      ) : report ? (
         /* ========================================================================= */
         /* 📊 COMPLETE 5-SECTION DIAGNOSTIC REPORT (Images 2, 3, 4) */
         /* ========================================================================= */
@@ -483,7 +510,7 @@ export const AiSummarizerPage: React.FC = () => {
                 <div className="flex items-center gap-3 w-full sm:w-72">
                   <div className="flex-1 h-2 bg-[#16223b] light:bg-slate-200 rounded-full overflow-hidden border border-[#23355b] light:border-slate-300">
                     <div 
-                      style={{ width: `${(report.performance.confidenceLevel / 10) * 100}%` }}
+                      style={{ width: `${Math.min(100, (report.performance.confidenceLevel / 10) * 100)}%` }}
                       className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full"
                     ></div>
                   </div>
@@ -626,6 +653,37 @@ export const AiSummarizerPage: React.FC = () => {
             </div>
           </div>
 
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="p-12 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center mx-auto">
+            <Brain className="w-7 h-7" />
+          </div>
+          <div className="space-y-1 max-w-md mx-auto">
+            <h3 className="text-base font-bold text-white light:text-slate-900">
+              No Trades Logged for {selectedPeriod} ({marketFilter})
+            </h3>
+            <p className="text-xs text-slate-400">
+              Log your trades or sync from Dhan to let AI evaluate your real performance patterns and psychology.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => setIsNewTradeModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/30 flex items-center gap-2 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Log a Trade</span>
+            </button>
+            <button
+              onClick={handleGenerateSummary}
+              className="px-4 py-2 rounded-xl bg-[#16223b] hover:bg-[#1f3054] text-slate-300 text-xs font-bold border border-[#23355b] transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              <span>View Benchmark Demo</span>
+            </button>
+          </div>
         </div>
       )}
 
