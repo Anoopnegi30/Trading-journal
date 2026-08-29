@@ -9,14 +9,17 @@ interface ChatMessage {
 }
 
 export const AiChatWidget: React.FC = () => {
-  const { trades } = useTradeContext();
+  const { trades, userProfile } = useTradeContext();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
+  
+  const firstName = userProfile?.name ? userProfile.name.split(' ')[0] : 'Trader';
+  
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       sender: 'ai',
-      text: 'Namaste Pratyay! I am your AI Trading Coach. Ask me anything about your trading stats, mistakes, setup edge, or how to maintain discipline today.'
+      text: `Namaste ${firstName}! I am your AI Trading Coach. Ask me anything about your trading stats, mistakes, setup edge, or how to maintain discipline today.`
     }
   ]);
 

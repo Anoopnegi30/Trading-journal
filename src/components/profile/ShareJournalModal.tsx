@@ -8,10 +8,14 @@ interface ShareJournalModalProps {
 }
 
 export const ShareJournalModal: React.FC<ShareJournalModalProps> = ({ isOpen, onClose }) => {
-  const { trades } = useTradeContext();
+  const { userProfile } = useTradeContext();
   const [copied, setCopied] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
-  const shareUrl = `https://tradediary.in/share/pratyay-prakash`;
+  
+  const userSlug = userProfile?.name
+    ? userProfile.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-')
+    : 'trader';
+  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://trading-journal.anonegi5678.workers.dev'}/share/${userSlug}`;
 
   if (!isOpen) return null;
 
