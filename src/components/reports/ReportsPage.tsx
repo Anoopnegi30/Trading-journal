@@ -375,14 +375,21 @@ export const ReportsPage: React.FC = () => {
 
         <button
           onClick={() => setActiveReportTab('Time of Day')}
-          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
             activeReportTab === 'Time of Day'
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-[#16223b]/60'
+              ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/30 border border-amber-300'
+              : 'bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 text-amber-400 border border-amber-500/40 hover:bg-amber-500/25 hover:border-amber-400 shadow-sm shadow-amber-500/10'
           }`}
         >
-          <Clock className="w-4 h-4" />
+          <Clock className={`w-4 h-4 ${activeReportTab === 'Time of Day' ? 'text-slate-950 stroke-[2.5]' : 'text-amber-400'}`} />
           <span>Time of Day</span>
+          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+            activeReportTab === 'Time of Day'
+              ? 'bg-slate-950/20 text-slate-950'
+              : 'bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse'
+          }`}>
+            ⚡ NEW
+          </span>
         </button>
 
         <button
