@@ -320,7 +320,7 @@ export const NewTradeModal: React.FC = () => {
       pnlPercent,
       riskReward: computedRr,
       strategy,
-      outcome: netPnl >= 0 ? outcome : (selectedMistakes.length > 0 && !selectedMistakes.includes('No Mistakes') ? 'Mistake' : 'Loss'),
+      outcome,
       isNoTradeDay: false,
       emotion: (emotionalState.includes('FOMO') ? 'FOMO' : emotionalState.includes('Greed') ? 'Greed' : emotionalState.includes('Revenge') ? 'Revenge' : 'Disciplined') as EmotionType,
       confidence: entryConfidence * 10,
