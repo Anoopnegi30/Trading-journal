@@ -401,21 +401,20 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     fetchCloudTrades().then(cloudTrades => {
       if (cloudTrades && Array.isArray(cloudTrades)) {
-        const getFingerprint = (t: any) => `${t.date}_${(t.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${t.quantity}_${t.direction}`;
-        const seenFingerprints = new Set<string>();
         const seenIds = new Set<string>();
         const uniqueTrades: Trade[] = [];
 
         for (const t of cloudTrades) {
-          const fp = getFingerprint(t);
-          if (!seenIds.has(t.id) && !seenFingerprints.has(fp)) {
+          if (t && t.id && !seenIds.has(t.id)) {
             seenIds.add(t.id);
-            seenFingerprints.add(fp);
             uniqueTrades.push(t);
           }
         }
 
-        setTrades(uniqueTrades);
+        if (uniqueTrades.length > 0) {
+          setTrades(uniqueTrades);
+          localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(uniqueTrades));
+        }
         setIsCloudSynced(true);
       }
     });
