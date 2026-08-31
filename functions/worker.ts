@@ -247,6 +247,8 @@ export default {
                       if (d.riskReward) tradeObj.riskReward = d.riskReward;
                       if (d.outcome) tradeObj.outcome = d.outcome;
                       if (d.confidence) tradeObj.confidence = d.confidence;
+                      if (d.stopLoss !== undefined && d.stopLoss !== null) tradeObj.stopLoss = d.stopLoss;
+                      if (d.target !== undefined && d.target !== null) tradeObj.target = d.target;
                     }
                   } catch (e) {}
                 }

@@ -92,8 +92,8 @@ export const NewTradeModal: React.FC = () => {
       setExitPrice(editingTrade.exitPrice);
       setQuantity(editingTrade.quantity);
       setFees(editingTrade.fees);
-      setStopLoss(editingTrade.stopLoss || '');
-      setTarget(editingTrade.target || '');
+      setStopLoss(editingTrade.stopLoss !== undefined && editingTrade.stopLoss !== null ? editingTrade.stopLoss : '');
+      setTarget(editingTrade.target !== undefined && editingTrade.target !== null ? editingTrade.target : '');
       setStrategy(editingTrade.strategy || 'Breakout');
       setOutcome(editingTrade.outcome || 'Full Success');
       setAnalysis(editingTrade.notes || editingTrade.analysis || '');
