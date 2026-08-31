@@ -190,8 +190,11 @@ export default {
             .replace('Aug2026', '28 AUG')
             .replace(/-/g, ' ');
 
+          const orderKey = group.buys[0]?.exchangeOrderId || group.buys[0]?.orderId || group.sells[0]?.exchangeOrderId || 'trade';
+          const stableId = `dhan-${todayStr}-${sym.replace(/[^a-zA-Z0-9]/g, '')}-${orderKey}`;
+
           const tradeObj = {
-            id: `dhan-${Date.now()}-${sym.replace(/[^a-zA-Z0-9]/g, '')}`,
+            id: stableId,
             date: todayStr,
             time: group.buys[0]?.createTime?.split(' ')[1] || '09:30',
             marketType: 'Indian',

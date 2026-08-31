@@ -111,7 +111,7 @@ export const TradesPage: React.FC = () => {
     if (res.success) {
       setSyncFeedback({
         type: 'success',
-        message: res.count > 0 ? `🎉 ${res.count} live trades imported from Dhan into Journal!` : 'Dhan Synced: No new executed trades found today.'
+        message: res.count > 0 ? `🎉 ${res.count} new live trade(s) imported from Dhan into Journal!` : (res.message || '✅ Dhan Synced: All trades are already logged and up to date.')
       });
     } else {
       setSyncFeedback({

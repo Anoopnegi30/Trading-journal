@@ -316,7 +316,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveCloudSetting('dhanCredentials', creds);
   };
 
-  // Sync from DhanHQ API
+  // Sync from DhanHQ API with Smart Deduplication
   const syncFromDhan = async (clientIdParam?: string, accessTokenParam?: string) => {
     const cId = clientIdParam || dhanCredentials?.clientId;
     const aToken = accessTokenParam || dhanCredentials?.accessToken;
@@ -327,19 +327,71 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const res = await syncDhanTrades(cId, aToken);
     if (res.success && res.trades && res.trades.length > 0) {
+      let newlyAddedCount = 0;
+
       setTrades(prev => {
-        const existingIds = new Set(prev.map(t => t.id));
-        const newTrades = res.trades!.filter(t => !existingIds.has(t.id));
-        return [...newTrades, ...prev];
+        // Fingerprint generator for trade deduplication
+        const getFingerprint = (t: any) => `${t.date}_${(t.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${t.quantity}_${t.direction}`;
+
+        // Deduplicate existing list first
+        const seenFingerprints = new Set<string>();
+        const seenIds = new Set<string>();
+        const cleanedPrev: Trade[] = [];
+
+        for (const t of prev) {
+          const fp = getFingerprint(t);
+          if (!seenIds.has(t.id) && !seenFingerprints.has(fp)) {
+            seenIds.add(t.id);
+            seenFingerprints.add(fp);
+            cleanedPrev.push(t);
+          }
+        }
+
+        // Filter truly new trades from Dhan response
+        const newTrades = res.trades!.filter(t => {
+          const fp = getFingerprint(t);
+          if (seenIds.has(t.id) || seenFingerprints.has(fp)) {
+            return false;
+          }
+          seenIds.add(t.id);
+          seenFingerprints.add(fp);
+          return true;
+        });
+
+        newlyAddedCount = newTrades.length;
+
+        if (newTrades.length === 0) {
+          if (cleanedPrev.length !== prev.length) {
+            localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(cleanedPrev));
+            syncAllTradesToCloud(cleanedPrev);
+            return cleanedPrev;
+          }
+          return prev;
+        }
+
+        const combined = [...newTrades, ...cleanedPrev];
+        localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(combined));
+        syncAllTradesToCloud(combined);
+        return combined;
       });
 
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch (e) {}
+      if (newlyAddedCount > 0) {
+        try {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        } catch (e) {}
+      }
+
+      return {
+        ...res,
+        count: newlyAddedCount,
+        message: newlyAddedCount > 0 
+          ? `🎉 ${newlyAddedCount} new trade(s) synced from Dhan!` 
+          : '✅ All Dhan trades are already logged and up to date.'
+      };
     }
 
     return res;
@@ -349,7 +401,21 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     fetchCloudTrades().then(cloudTrades => {
       if (cloudTrades && Array.isArray(cloudTrades)) {
-        setTrades(cloudTrades);
+        const getFingerprint = (t: any) => `${t.date}_${(t.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${t.quantity}_${t.direction}`;
+        const seenFingerprints = new Set<string>();
+        const seenIds = new Set<string>();
+        const uniqueTrades: Trade[] = [];
+
+        for (const t of cloudTrades) {
+          const fp = getFingerprint(t);
+          if (!seenIds.has(t.id) && !seenFingerprints.has(fp)) {
+            seenIds.add(t.id);
+            seenFingerprints.add(fp);
+            uniqueTrades.push(t);
+          }
+        }
+
+        setTrades(uniqueTrades);
         setIsCloudSynced(true);
       }
     });
