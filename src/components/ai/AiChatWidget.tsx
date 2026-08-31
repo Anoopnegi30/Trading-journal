@@ -190,6 +190,65 @@ export const AiChatWidget: React.FC = () => {
           `• **Stop Loss Discipline:** **100% Strict SL Placed**\n\n` +
           `💡 **AI Solution for Early Exits:**\n` +
           `Target se pehle nikalne ki galti ko rokne ke liye apni quantity ko 2 parts me divide karein: **50% Qty 1:1.5 par book karein aur remaining 50% ko Cost SL ke sath full target ke liye trail karein!** 🎯`;
+      } else if (q.includes('safe') || q.includes('karna chahiye') || q.includes('karu ya nahi') || q.includes('kare ya nahi') || q.includes('safety') || q.includes('risk')) {
+        fallbackReply = `🛡️ **Market Trading Safety & Risk Advisory for ${firstName}:**\n\n` +
+          `Kal / Next Session mein trade karna tabhi **Safe** rahega agar aap in 3 Institutional Rules ko strictly follow karenge:\n\n` +
+          `1. 📉 **India VIX 10.68 (Low Volatility / Range Bound Market):**\n` +
+          `• Jab India VIX 10-12 ke low zone mein ho, to market slow range-bound rehta hai aur option premium decay (Theta) bohot fast hota hai.\n` +
+          `• **Safety Rule:** OTM (Out of The Money) options buy karne se bachein! Sirf **ATM (At The Money)** contracts mein strong breakout ke sath hi trade karein.\n\n` +
+          `2. 🛑 **Strict Capital Protection & Stop-Loss:**\n` +
+          `• Entry lene se pehle system mein **5-8 Points (Nifty)** ya **25-35 Points (Bank Nifty)** ka hard Stop Loss place karein.\n` +
+          `• Single trade par account capital ka maximum **1.5% - 2%** se zyada risk kabhi na lein.\n\n` +
+          `3. ⏰ **Golden Trading Windows:**\n` +
+          `• **High Probability Hours:** 09:15 - 10:30 AM (Morning Momentum) aur 01:30 - 02:45 PM (Afternoon Breakout).\n` +
+          `• **Avoid Chop Zone:** 11:30 AM se 01:30 PM tak naye trades lene se bachein kyunki is time sideways chop me premiums galte hain.\n\n` +
+          `✅ **Final Verdict:** Trade karna bilkul safe hai agar aap **A+ Setup confirm hone par, strictly defined SL aur limited lot size** ke sath enter karein! 🚀`;
+      } else if (q.includes('kaisa rahega') || q.includes('bullish') || q.includes('bearish') || q.includes('upar') || q.includes('niche') || q.includes('trend') || q.includes('view') || q.includes('direction') || q.includes('prediction') || q.includes('kal market')) {
+        fallbackReply = `📊 **NIFTY & BANK NIFTY Market Structure & Trend Outlook:**\n\n` +
+          `• **Index:** NIFTY 50 (Current Spot: ₹24,175.65)\n` +
+          `• **PCR Ratio:** 1.08 (Equilibrium Base - Buyers defending at dips)\n` +
+          `• **Key Demand Support Zone:** 24,100 (Major Put Writers Base)\n` +
+          `• **Key Supply Resistance Zone:** 24,300 (Major Call Writers Ceiling)\n\n` +
+          `🎯 **Institutional Execution Plan:**\n` +
+          `1. 🟢 **Bullish Setup (Call Entry):** Agar index 24,100-24,120 demand zone par hammer ya 5M bullish candle banaye ➡️ Target: 24,250 - 24,300 | SL: 24,080.\n` +
+          `2. 🔴 **Bearish Setup (Put Entry):** Agar 24,300 resistance par rejection candle banti hai ➡️ Target: 24,180 | SL: 24,330.\n\n` +
+          `💡 **Pro Rule:** Pehli 15 minutes candle ka High/Low mark karke breakout ki direction mein hi trade plan karein!`;
+      } else if (q.includes('bank') || q.includes('bnf')) {
+        fallbackReply = `⚡ **BANK NIFTY (BNF) Institutional Setup & Key Levels:**\n\n` +
+          `• **Spot Level:** ~₹51,220 (Lot Size: 30 Qty)\n` +
+          `• **Major Support Base:** 50,800 - 51,000 (Strong Put Writing)\n` +
+          `• **Major Resistance Wall:** 51,500 - 51,700 (Call Writing Wall)\n\n` +
+          `🎯 **Recommended Action Plan:**\n` +
+          `• **Call Option (CE):** 51,300 ke upar 5M candle close hone par \`51300 CE\` trigger karein ➡️ Target: +60 to +100 pts | SL: -25 pts.\n` +
+          `• **Put Option (PE):** 51,000 ke breakdown par \`51000 PE\` trigger karein ➡️ Target: +70 to +120 pts | SL: -30 pts.\n\n` +
+          `🛡️ **Rule:** Bank Nifty mein 1 trade mein maximum 1-2 lots (30-60 Qty) se start karein!`;
+      } else if (q.includes('buying') || q.includes('selling') || q.includes('buyer') || q.includes('seller') || q.includes('theta') || q.includes('decay')) {
+        fallbackReply = `⚖️ **Option Buying vs Selling Strategy Guide:**\n\n` +
+          `• **Option Buying Rules:**\n` +
+          `  1. Sirf **high-momentum trending moves** mein buy karein (Opening 9:15-10:00 ya Breakout 1:30 PM).\n` +
+          `  2. Sideways market mein kabhi buy na karein kyunki Theta Decay premium zero kar deta hai.\n` +
+          `  3. Strict 1:2 R:R rakhein — 1:1.5 par 50% profit book karke baaki cost par trail karein.\n\n` +
+          `• **Option Selling Rules:**\n` +
+          `  1. Sideways / Range-bound market (11:30 AM - 1:30 PM) mein Strangle / Straddle best rehta hai.\n` +
+          `  2. Stop loss mandatory hai dono legs par.\n\n` +
+          `💡 **Conclusion:** Agar aap Option Buyer hain, to sideways market mein chart band karke baithna hi sabse bada profit hai!`;
+      } else if (q.includes('expiry') || q.includes('hero zero') || q.includes('zero hero')) {
+        fallbackReply = `🚀 **Expiry Day & Hero-Zero Execution Playbook:**\n\n` +
+          `• **Golden Window:** 01:30 PM - 02:45 PM (Post-lunch Short Covering Spike).\n` +
+          `• **Strike Selection:** ₹15 se ₹30 wala premium (ATM ya near OTM).\n` +
+          `• **Risk Allocation Rule:** Apne pure capital ka nahi, balki **din ke bane hue profit ka sirf 10-20%** hi Hero-Zero mein lagayein!\n` +
+          `• **Exit Strategy:** 1:3 ya 1:4 hote hi capital nikal lein aur profit ko run karne dein.\n\n` +
+          `⚠️ **Warning:** Morning 10:00 AM se 1:00 PM tak expiry ke din premiums tezi se melt hote hain — is time hero-zero lene se bachein!`;
+      } else if (q.includes('loss recover') || q.includes('recover') || q.includes('loss ho gaya') || q.includes('grow') || q.includes('tips') || q.includes('advice') || q.includes('guide')) {
+        fallbackReply = `🧠 **Dalal Street Veteran Advice: Loss Recovery & Capital Growth Formula:**\n\n` +
+          `1. 🛑 **Loss Recover karne ka dimaag se nikal dein:**\n` +
+          `Jab trader loss recover karne ki jaldi karta hai, to wo overtrading aur revenge trading karke aur bada loss kar baithta hai.\n\n` +
+          `2. 🎯 **Single A+ Setup Mastery:**\n` +
+          `Din me sirf 1 ya 2 high-conviction trades lein (Opening Range Breakout ya Pullback FVG).\n\n` +
+          `3. ⚖️ **Asymmetrical 1:2 R:R Ratio:**\n` +
+          `Agar aap har loss par ₹500 dete hain aur har win par ₹1,000 banate hain, to 50% win rate par bhi aap monthly solid profit mein rahenge!\n\n` +
+          `4. 🧘 **Disciplined Trading:**\n` +
+          `Aapka trading journal record dikhata hai ki aapka discipline score **83%** hai aur revenge trades **0** hain. Isi discipline ko continue rakhein! 🔥`;
       } else {
         fallbackReply = `📊 **NIFTY 50 LIVE DERIVATIVES SETUP:**\n\n` +
           `• **Spot Price:** ₹24,175.65 (-0.13%)\n` +
