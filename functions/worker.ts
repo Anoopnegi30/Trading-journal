@@ -928,7 +928,7 @@ RULES FOR YOUR RESPONSES:
             contents,
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 1024
+              maxOutputTokens: 4096
             }
           })
         });
@@ -942,7 +942,8 @@ RULES FOR YOUR RESPONSES:
         }
 
         const geminiData: any = await geminiRes.json();
-        const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received from Gemini.';
+        const parts = geminiData.candidates?.[0]?.content?.parts || [];
+        const candidateText = parts.map((p: any) => p.text || '').filter(Boolean).join('\n') || 'No response received from Gemini.';
 
         return new Response(JSON.stringify({
           success: true,
