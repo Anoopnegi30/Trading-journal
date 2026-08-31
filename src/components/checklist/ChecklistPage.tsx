@@ -23,8 +23,40 @@ interface ChecklistItem {
 
 export const ChecklistPage: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'Checklist' | 'Analysis'>('Checklist');
-  const [currentDate] = useState('28-08-2026');
   const [isSaved, setIsSaved] = useState(false);
+
+  // Dynamic live date
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+
+  const todayStr = (() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  })();
+
+  const isToday = selectedDate === todayStr;
+
+  const dateObj = new Date(selectedDate + 'T12:00:00');
+  const fullDateText = dateObj.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  const displayPillDate = dateObj.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).replace(/\//g, '-');
 
   // Pre-Market items matching screenshot 2 & 3
   const [preMarketItems, setPreMarketItems] = useState<ChecklistItem[]>([
@@ -102,21 +134,23 @@ export const ChecklistPage: React.FC = () => {
             <h2 className="text-2xl font-black text-white light:text-slate-900 mt-1">
               Trading Checklist
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Tuesday, May 19, 2026
+            <p className="text-xs text-slate-400 mt-0.5 capitalize">
+              {fullDateText}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-[#16223b] light:bg-slate-100 px-3 py-2 rounded-xl border border-[#23355b] text-xs font-semibold text-slate-300">
               <Calendar className="w-3.5 h-3.5 text-blue-400" />
-              <span>{currentDate}</span>
-              <span className="text-[10px] uppercase font-bold text-blue-400 ml-1">TODAY</span>
+              <span>{displayPillDate}</span>
+              {isToday && (
+                <span className="text-[10px] uppercase font-bold text-emerald-400 ml-1">TODAY</span>
+              )}
             </div>
 
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 transition-all transform active:scale-95"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               {isSaved ? 'Saved!' : 'Save'}
