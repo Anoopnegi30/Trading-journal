@@ -37,7 +37,9 @@ export const NewTradeModal: React.FC = () => {
     editingTrade, 
     setEditingTrade, 
     rules, 
-    strategies 
+    strategies,
+    availableMistakes,
+    addCustomMistake
   } = useTradeContext();
   
   // Navigation tabs in modal
@@ -74,6 +76,8 @@ export const NewTradeModal: React.FC = () => {
   const [emotionalState, setEmotionalState] = useState<string>('Disciplined');
   const [selectedMistakes, setSelectedMistakes] = useState<string[]>([]);
   const [lessonLearned, setLessonLearned] = useState('');
+  const [isAddingMistake, setIsAddingMistake] = useState(false);
+  const [newMistakeName, setNewMistakeName] = useState('');
 
   // Sync state when editing an existing trade
   useEffect(() => {
@@ -113,8 +117,8 @@ export const NewTradeModal: React.FC = () => {
     'Never risk > 2% per trade'
   ];
 
-  // Mistakes list matching screenshots
-  const allMistakes = [
+  // Mistakes list dynamic from context
+  const currentMistakesList = availableMistakes && availableMistakes.length > 0 ? availableMistakes : [
     'Overtrading',
     'Revenge Trading',
     'Risked Too Much',
@@ -794,25 +798,86 @@ export const NewTradeModal: React.FC = () => {
 
               </div>
 
-              {/* Mistakes Checklist */}
+              {/* Mistakes Checklist with Custom Mistake Creator */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700 mb-2">
-                  Mistakes Identified (If any)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[11px] font-bold text-slate-300 light:text-slate-700">
+                    Mistakes Identified (If any)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingMistake(prev => !prev)}
+                    className="text-[11px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Custom Mistake</span>
+                  </button>
+                </div>
+
+                {/* Inline Custom Mistake Creator Form */}
+                {isAddingMistake && (
+                  <div className="mb-2.5 p-3 rounded-2xl bg-[#0d1527] light:bg-slate-50 border border-blue-500/30 flex items-center gap-2 animate-in fade-in duration-150">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Enter new mistake (e.g. Trailing SL cut early, Traded before 9:30)..."
+                      value={newMistakeName}
+                      onChange={(e) => setNewMistakeName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (newMistakeName.trim()) {
+                            addCustomMistake(newMistakeName.trim());
+                            setSelectedMistakes(prev => [...prev, newMistakeName.trim()]);
+                            setNewMistakeName('');
+                            setIsAddingMistake(false);
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-[#16223b] light:bg-white border border-[#23355b] light:border-slate-300 rounded-xl px-3 py-1.5 text-xs text-white light:text-slate-900 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newMistakeName.trim()) {
+                          addCustomMistake(newMistakeName.trim());
+                          setSelectedMistakes(prev => [...prev, newMistakeName.trim()]);
+                          setNewMistakeName('');
+                          setIsAddingMistake(false);
+                        }
+                      }}
+                      disabled={!newMistakeName.trim()}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shrink-0"
+                    >
+                      Add Tag
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingMistake(false);
+                        setNewMistakeName('');
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl text-slate-400 hover:text-white text-xs cursor-pointer shrink-0"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {allMistakes.map(m => {
+                  {currentMistakesList.map(m => {
                     const isSelected = selectedMistakes.includes(m);
                     return (
                       <button
                         type="button"
                         key={m}
                         onClick={() => toggleMistake(m)}
-                        className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
+                        className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                           isSelected
                             ? m === 'No Mistakes'
                               ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300'
                               : 'bg-rose-600/20 border-rose-500/40 text-rose-300'
-                            : 'bg-[#16223b] border-[#23355b] text-slate-300 hover:border-slate-500'
+                            : 'bg-[#16223b] light:bg-slate-100 border-[#23355b] light:border-slate-300 text-slate-300 light:text-slate-700 hover:border-slate-500'
                         }`}
                       >
                         <span className="truncate">{m}</span>
@@ -820,6 +885,17 @@ export const NewTradeModal: React.FC = () => {
                       </button>
                     );
                   })}
+
+                  {!isAddingMistake && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingMistake(true)}
+                      className="p-2.5 rounded-xl border border-dashed border-[#23355b] light:border-slate-300 hover:border-blue-500/50 text-blue-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-[#16223b]/50 light:bg-slate-50 hover:bg-blue-500/10 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ New Mistake</span>
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -85,6 +85,9 @@ interface TradeContextType {
   exportCsv: () => void;
   importCsv: (file: File) => Promise<{ success: boolean; count: number; error?: string }>;
   resetToSampleData: () => void;
+  availableMistakes: string[];
+  addCustomMistake: (name: string) => void;
+  deleteCustomMistake: (name: string) => void;
 }
 
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
@@ -99,6 +102,23 @@ const PROFILE_STORAGE_KEY = 'trade_diary_profile_v4';
 const DHAN_CREDS_STORAGE_KEY = 'trade_diary_dhan_creds_v4';
 const CHALLENGE_STORAGE_KEY = 'trade_diary_challenge_v4';
 const TAB_STORAGE_KEY = 'trade_diary_active_tab_v4';
+
+const MISTAKES_STORAGE_KEY = "trade_diary_mistakes_v4";
+
+export const DEFAULT_MISTAKES: string[] = [
+  "Overtrading",
+  "Revenge Trading",
+  "Risked Too Much",
+  "Exited Too Early",
+  "Exited Too Late",
+  "FOMO Entry",
+  "Ignored Signals",
+  "No Clear Plan",
+  "Ignored Stop Loss",
+  "No Mistakes",
+  "Chasing Market",
+  "Hesitation / Late Entry"
+];
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Anoop Negi',
@@ -154,6 +174,39 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     return null;
   });
+
+  // Mistakes state (Persistent & Cloud-backed)
+  const [availableMistakes, setAvailableMistakes] = useState<string[]>(() => {
+    const saved = localStorage.getItem(MISTAKES_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return DEFAULT_MISTAKES;
+  });
+
+  const addCustomMistake = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setAvailableMistakes(prev => {
+      if (prev.includes(trimmed)) return prev;
+      const next = [...prev, trimmed];
+      localStorage.setItem(MISTAKES_STORAGE_KEY, JSON.stringify(next));
+      saveCloudSetting("customMistakes", next);
+      return next;
+    });
+  };
+
+  const deleteCustomMistake = (name: string) => {
+    setAvailableMistakes(prev => {
+      const next = prev.filter(m => m !== name);
+      localStorage.setItem(MISTAKES_STORAGE_KEY, JSON.stringify(next));
+      saveCloudSetting("customMistakes", next);
+      return next;
+    });
+  };
 
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -322,6 +375,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (cloudSettings.checklist && Array.isArray(cloudSettings.checklist)) {
           setChecklist(cloudSettings.checklist);
           localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(cloudSettings.checklist));
+        }
+        if (cloudSettings.customMistakes && Array.isArray(cloudSettings.customMistakes)) {
+          setAvailableMistakes(cloudSettings.customMistakes);
+          localStorage.setItem(MISTAKES_STORAGE_KEY, JSON.stringify(cloudSettings.customMistakes));
         }
         if (cloudSettings.dhanCredentials) {
           setDhanCredentials(cloudSettings.dhanCredentials);
@@ -643,7 +700,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         syncToCloud,
         exportCsv,
         importCsv,
-        resetToSampleData
+        resetToSampleData,
+        availableMistakes,
+        addCustomMistake,
+        deleteCustomMistake
       }}
     >
       {children}
