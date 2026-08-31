@@ -197,7 +197,15 @@ export function getDailyPnlData(trades: Trade[]) {
 }
 
 export function getCumulativePnlData(trades: Trade[]) {
-  const sorted = [...trades].filter(t => !t.isNoTradeDay).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const getTimestamp = (t: Trade) => {
+    const d = t.date || '1970-01-01';
+    const timeStr = (t.time || '00:00:00').trim();
+    const formattedTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+    const ts = new Date(`${d}T${formattedTime}`).getTime();
+    return isNaN(ts) ? new Date(d).getTime() : ts;
+  };
+
+  const sorted = [...trades].filter(t => !t.isNoTradeDay).sort((a, b) => getTimestamp(a) - getTimestamp(b));
   
   let runningPnl = 0;
   return sorted.map(t => {
@@ -206,6 +214,7 @@ export function getCumulativePnlData(trades: Trade[]) {
     return {
       date: formattedDate,
       fullDate: t.date,
+      time: t.time || '',
       pnl: Number(runningPnl.toFixed(2)),
       tradePnl: t.netPnl,
       symbol: t.symbol

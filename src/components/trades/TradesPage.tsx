@@ -57,6 +57,15 @@ export const TradesPage: React.FC = () => {
   const strategies = ['All', ...Array.from(new Set(trades.map(t => t.strategy).filter(Boolean)))];
 
   // Filtering & Sorting logic
+  const getTradeTimestamp = (t: Trade) => {
+    const d = t.date || '1970-01-01';
+    const timeStr = (t.time || '00:00:00').trim();
+    const formattedTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+    const isoString = `${d}T${formattedTime}`;
+    const ts = new Date(isoString).getTime();
+    return isNaN(ts) ? new Date(d).getTime() : ts;
+  };
+
   const filteredTrades = trades.filter(t => {
     const matchesSearch = 
       t.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,8 +77,8 @@ export const TradesPage: React.FC = () => {
 
     return matchesSearch && matchesStrategy && matchesOutcome;
   }).sort((a, b) => {
-    if (sortBy === 'newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
-    if (sortBy === 'oldest') return new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (sortBy === 'newest') return getTradeTimestamp(b) - getTradeTimestamp(a);
+    if (sortBy === 'oldest') return getTradeTimestamp(a) - getTradeTimestamp(b);
     if (sortBy === 'highest_pnl') return b.netPnl - a.netPnl;
     if (sortBy === 'lowest_pnl') return a.netPnl - b.netPnl;
     return 0;
