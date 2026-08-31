@@ -78,7 +78,11 @@ export const RiskManagementPage: React.FC = () => {
     else if (inst === 'FINNIFTY') setLotSize(25);
     else if (inst === 'MIDCPNIFTY') setLotSize(75);
     else if (inst === 'SENSEX') setLotSize(10);
-    else setLotSize(1);
+    else if (inst === 'CUSTOM') {
+      // Keep existing lot size
+    } else {
+      setLotSize(1);
+    }
   };
 
   const numEntry = parseFloat(entryPrice) || 0;
@@ -234,11 +238,32 @@ export const RiskManagementPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Instrument Selection */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                Instrument & Contract Type
-              </label>
+            {/* Instrument Selection & Manual Lot Size Input */}
+            <div className="space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="block text-[11px] font-bold text-slate-300">
+                  Instrument & Lot Size
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-400">Custom Lot Size:</span>
+                  <div className="flex items-center gap-1.5 bg-[#16223b] border border-blue-500/50 rounded-xl px-2.5 py-1">
+                    <input
+                      type="number"
+                      min="1"
+                      value={lotSize}
+                      onChange={(e) => {
+                        const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                        setLotSize(val);
+                        setInstrument('CUSTOM');
+                      }}
+                      className="w-16 bg-transparent text-center text-white font-mono font-black text-xs focus:outline-none"
+                      placeholder="Lot Size"
+                    />
+                    <span className="text-[10px] text-slate-400 font-mono">qty/lot</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {[
                   { name: 'NIFTY', lot: 25 },
@@ -246,7 +271,7 @@ export const RiskManagementPage: React.FC = () => {
                   { name: 'FINNIFTY', lot: 25 },
                   { name: 'MIDCPNIFTY', lot: 75 },
                   { name: 'SENSEX', lot: 10 },
-                  { name: 'EQUITY', lot: 1 }
+                  { name: 'CUSTOM', lot: lotSize }
                 ].map((item) => (
                   <button
                     key={item.name}
@@ -255,11 +280,11 @@ export const RiskManagementPage: React.FC = () => {
                     className={`py-2 px-1 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
                       instrument === item.name
                         ? 'bg-blue-600 text-white shadow-md border border-blue-400'
-                        : 'bg-[#16223b] text-slate-400 border border-[#23355b] hover:text-white'
+                        : 'bg-[#16223b] text-slate-400 border border-[#23355b] hover:text-white hover:border-slate-500'
                     }`}
                   >
                     <div>{item.name}</div>
-                    <div className="text-[9px] opacity-70">Lot: {item.lot}</div>
+                    <div className="text-[9px] opacity-75 font-mono">Lot: {item.name === 'CUSTOM' ? lotSize : item.lot}</div>
                   </button>
                 ))}
               </div>
