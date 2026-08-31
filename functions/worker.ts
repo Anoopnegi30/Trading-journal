@@ -75,17 +75,22 @@ export default {
         const body: any = await request.json();
         let { clientId, accessToken, totpSecret, dhanPin, apiKey } = body;
 
-        // If no direct token provided but TOTP secret is present, generate live TOTP
         let currentAccessToken = accessToken;
-        if (!currentAccessToken && totpSecret) {
-          const liveTotp = await generateTOTP(totpSecret);
-          console.log('Generated live TOTP for background sync:', liveTotp);
+        if ((!clientId || !currentAccessToken) && env.DB) {
+          try {
+            const row: any = await env.DB.prepare('SELECT value FROM app_settings WHERE key = ?').bind('dhanCredentials').first();
+            if (row && row.value) {
+              const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+              if (parsed.clientId) clientId = parsed.clientId;
+              if (parsed.accessToken) currentAccessToken = parsed.accessToken;
+            }
+          } catch (e) {}
         }
 
         if (!clientId || !currentAccessToken) {
           return new Response(JSON.stringify({ 
             success: false, 
-            error: 'Missing Dhan Client ID or Access Token. Please provide credentials.' 
+            error: 'Missing Dhan Client ID or Access Token. Please connect your Dhan account in Settings.' 
           }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -176,6 +181,7 @@ export default {
           const gst = (brokerage + exchangeCharges) * 0.18;
           const stampDuty = totalBuyValue * 0.00003;
           const sebiCharges = (totalBuyValue + totalSellValue) * 0.000001;
+          const fees = Number((brokerage + stt + exchangeCharges + gst + stampDuty + sebiCharges).toFixed(2));
           const grossPnl = Number((totalSellValue - totalBuyValue).toFixed(2));
           const netPnl = Number((grossPnl - fees).toFixed(2));
 
