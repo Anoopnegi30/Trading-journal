@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { formatINR, calculateDashboardStats } from '../../utils/calculations';
 
-type ReportTab = 'Performance' | 'Psychology' | 'Risk' | 'Journal';
+type ReportTab = 'Performance' | 'Time of Day' | 'Psychology' | 'Risk' | 'Journal';
 
 export const ReportsPage: React.FC = () => {
   const { trades, dateFilter, setDateFilter, marketFilter, setMarketFilter, exportCsv } = useTradeContext();
@@ -222,6 +222,114 @@ export const ReportsPage: React.FC = () => {
   const daysWithOnly1Trade = dailyPnls.filter(d => d.trades === 1).length;
   const overtradingDays = dailyPnls.filter(d => d.trades >= 7).length;
 
+  // ==========================================
+  // Time-of-Day & Hourly Execution Analytics
+  // ==========================================
+  interface TimeSlotStats {
+    key: string;
+    name: string;
+    label: string;
+    description: string;
+    trades: number;
+    wins: number;
+    losses: number;
+    grossPnl: number;
+    charges: number;
+    netPnl: number;
+    winRate: number;
+    avgPnl: number;
+  }
+
+  const sessionSlotsData: Record<string, TimeSlotStats> = {
+    opening: { key: 'opening', name: 'Opening Momentum', label: '09:15 - 10:00 AM', description: 'Opening volatility & morning breakout setups', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    morning: { key: 'morning', name: 'Morning Trend', label: '10:00 - 11:30 AM', description: 'Institutional liquidity & steady trend continuation', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    midday: { key: 'midday', name: 'Lunch / Chop Zone', label: '11:30 - 01:30 PM', description: 'Low volume, range-bound trap & theta decay', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    afternoon: { key: 'afternoon', name: 'Afternoon Breakout', label: '01:30 - 02:30 PM', description: 'European market open & second-half expansion', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    closing: { key: 'closing', name: 'Closing & 3 PM Spike', label: '02:30 - 03:30 PM', description: 'Hero-Zero gamma spikes & closing volume', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 }
+  };
+
+  const hourlySlotsData: Record<string, TimeSlotStats> = {
+    '09:00 - 10:00': { key: '09:00 - 10:00', name: '09:00 - 10:00 AM', label: '09:00 - 10:00 AM', description: 'Market Opening Surge', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    '10:00 - 11:00': { key: '10:00 - 11:00', name: '10:00 - 11:00 AM', label: '10:00 - 11:00 AM', description: 'Mid-Morning Continuation', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    '11:00 - 12:00': { key: '11:00 - 12:00', name: '11:00 - 12:00 PM', label: '11:00 - 12:00 PM', description: 'Late Morning Consolidation', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    '12:00 - 13:00': { key: '12:00 - 13:00', name: '12:00 - 01:00 PM', label: '12:00 - 01:00 PM', description: 'Lunch Chop & Sideways', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    '13:00 - 14:00': { key: '13:00 - 14:00', name: '01:00 - 02:00 PM', label: '01:00 - 02:00 PM', description: 'Early Afternoon Sweep', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 },
+    '14:00 - 15:30': { key: '14:00 - 15:30', name: '02:00 - 03:30 PM', label: '02:00 - 03:30 PM', description: 'Power Hour & 3 PM Move', trades: 0, wins: 0, losses: 0, grossPnl: 0, charges: 0, netPnl: 0, winRate: 0, avgPnl: 0 }
+  };
+
+  validTrades.forEach(t => {
+    const timeStr = (t.time || '10:00').trim();
+    const parts = timeStr.split(':');
+    const h = parseInt(parts[0] || '10', 10);
+    const m = parseInt(parts[1] || '0', 10);
+    const timeInMins = h * 60 + m;
+
+    // Classify Session
+    let sessionKey = 'morning';
+    if (timeInMins >= 9 * 60 + 15 && timeInMins < 10 * 60) sessionKey = 'opening';
+    else if (timeInMins >= 10 * 60 && timeInMins < 11 * 60 + 30) sessionKey = 'morning';
+    else if (timeInMins >= 11 * 60 + 30 && timeInMins < 13 * 60 + 30) sessionKey = 'midday';
+    else if (timeInMins >= 13 * 60 + 30 && timeInMins < 14 * 60 + 30) sessionKey = 'afternoon';
+    else if (timeInMins >= 14 * 60 + 30) sessionKey = 'closing';
+
+    const s = sessionSlotsData[sessionKey];
+    if (s) {
+      s.trades += 1;
+      if (t.netPnl > 0) s.wins += 1;
+      else if (t.netPnl < 0) s.losses += 1;
+      s.grossPnl += (t.pnl || t.netPnl);
+      s.charges += (t.fees || 0);
+      s.netPnl += t.netPnl;
+    }
+
+    // Classify Hour
+    let hourKey = '10:00 - 11:00';
+    if (h <= 9) hourKey = '09:00 - 10:00';
+    else if (h === 10) hourKey = '10:00 - 11:00';
+    else if (h === 11) hourKey = '11:00 - 12:00';
+    else if (h === 12) hourKey = '12:00 - 13:00';
+    else if (h === 13) hourKey = '13:00 - 14:00';
+    else if (h >= 14) hourKey = '14:00 - 15:30';
+
+    const hr = hourlySlotsData[hourKey];
+    if (hr) {
+      hr.trades += 1;
+      if (t.netPnl > 0) hr.wins += 1;
+      else if (t.netPnl < 0) hr.losses += 1;
+      hr.grossPnl += (t.pnl || t.netPnl);
+      hr.charges += (t.fees || 0);
+      hr.netPnl += t.netPnl;
+    }
+  });
+
+  Object.values(sessionSlotsData).forEach(s => {
+    s.winRate = s.trades > 0 ? Math.round((s.wins / s.trades) * 100) : 0;
+    s.avgPnl = s.trades > 0 ? Number((s.netPnl / s.trades).toFixed(2)) : 0;
+  });
+
+  Object.values(hourlySlotsData).forEach(h => {
+    h.winRate = h.trades > 0 ? Math.round((h.wins / h.trades) * 100) : 0;
+    h.avgPnl = h.trades > 0 ? Number((h.netPnl / h.trades).toFixed(2)) : 0;
+  });
+
+  const sessionList = Object.values(sessionSlotsData);
+  const activeSessions = sessionList.filter(s => s.trades > 0);
+  const mostProfitableTimeSession = activeSessions.length > 0
+    ? activeSessions.reduce((prev, cur) => cur.netPnl > prev.netPnl ? cur : prev, activeSessions[0])
+    : null;
+  const leastProfitableTimeSession = activeSessions.length > 0
+    ? activeSessions.reduce((prev, cur) => cur.netPnl < prev.netPnl ? cur : prev, activeSessions[0])
+    : null;
+
+  const hourlyList = Object.values(hourlySlotsData);
+  const activeHours = hourlyList.filter(h => h.trades > 0);
+  const mostProfitableHour = activeHours.length > 0
+    ? activeHours.reduce((prev, cur) => cur.netPnl > prev.netPnl ? cur : prev, activeHours[0])
+    : null;
+  const highestWinRateHour = activeHours.length > 0
+    ? activeHours.reduce((prev, cur) => cur.winRate > prev.winRate ? cur : prev, activeHours[0])
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Top Header with Navigation Tabs */}
@@ -235,7 +343,7 @@ export const ReportsPage: React.FC = () => {
               Performance & Trading Reports
             </h2>
             <p className="text-xs text-slate-400">
-              In-depth execution quality, psychological metrics, and weekday win rate matrix
+              In-depth execution quality, hourly time-slot analysis, and psychological metrics
             </p>
           </div>
         </div>
@@ -263,6 +371,18 @@ export const ReportsPage: React.FC = () => {
         >
           <BarChart3 className="w-4 h-4" />
           <span>Performance</span>
+        </button>
+
+        <button
+          onClick={() => setActiveReportTab('Time of Day')}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeReportTab === 'Time of Day'
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-[#16223b]/60'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Time of Day</span>
         </button>
 
         <button
@@ -681,6 +801,279 @@ export const ReportsPage: React.FC = () => {
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: TIME OF DAY / HOURLY EXECUTION PERFORMANCE */}
+      {/* ========================================================================= */}
+      {activeReportTab === 'Time of Day' && (
+        <div className="space-y-6">
+          {/* Executive Time Performance Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Most Profitable Window */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-[#111a2e] to-[#162746] light:bg-white border border-emerald-500/30 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400">Prime Golden Window</span>
+                <span className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-lg font-black text-emerald-400">
+                {mostProfitableTimeSession ? mostProfitableTimeSession.label : '09:15 - 10:00 AM'}
+              </div>
+              <p className="text-xs text-slate-300 light:text-slate-600 font-mono font-bold">
+                Net P&L: <span className="text-emerald-400">{formatINR(mostProfitableTimeSession?.netPnl || 0)}</span> ({mostProfitableTimeSession?.winRate || 0}% Win Rate)
+              </p>
+            </div>
+
+            {/* Card 2: Highest Win Rate Hour */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-[#111a2e] to-[#1a233d] light:bg-white border border-blue-500/30 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400">Peak Accuracy Hour</span>
+                <span className="p-1.5 rounded-xl bg-blue-500/10 text-blue-400">
+                  <Target className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-lg font-black text-blue-400 font-mono">
+                {highestWinRateHour ? highestWinRateHour.name : '09:00 - 10:00 AM'}
+              </div>
+              <p className="text-xs text-slate-300 light:text-slate-600 font-mono font-bold">
+                Win Rate: <span className="text-blue-400">{highestWinRateHour?.winRate || 0}%</span> ({highestWinRateHour?.wins || 0}W / {highestWinRateHour?.losses || 0}L)
+              </p>
+            </div>
+
+            {/* Card 3: Worst / Drawdown Time Window */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-[#111a2e] to-[#2d1b2a] light:bg-white border border-rose-500/30 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400">Chop / Drawdown Zone</span>
+                <span className="p-1.5 rounded-xl bg-rose-500/10 text-rose-400">
+                  <AlertTriangle className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-lg font-black text-rose-400">
+                {leastProfitableTimeSession && leastProfitableTimeSession.netPnl < 0 ? leastProfitableTimeSession.label : 'None (No Loss Sessions)'}
+              </div>
+              <p className="text-xs text-slate-300 light:text-slate-600 font-mono font-bold">
+                {leastProfitableTimeSession && leastProfitableTimeSession.netPnl < 0 
+                  ? `Net P&L: ${formatINR(leastProfitableTimeSession.netPnl)} (${leastProfitableTimeSession.trades} trades)`
+                  : 'All trading hours profitable!'}
+              </p>
+            </div>
+
+            {/* Card 4: Opening Session Dominance */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-[#111a2e] to-[#182645] light:bg-white border border-indigo-500/30 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400">Total F&O Trading Time</span>
+                <span className="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <Clock className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-lg font-black text-white light:text-slate-900 font-mono">
+                09:15 AM - 03:30 PM
+              </div>
+              <p className="text-xs text-slate-400">
+                Active in <strong className="text-indigo-400">{activeSessions.length} session(s)</strong> across {totalTrades} executed trades
+              </p>
+            </div>
+          </div>
+
+          {/* Section 1: Market Session Breakdown Cards */}
+          <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1e2942] pb-4">
+              <div>
+                <h3 className="text-base font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-cyan-400" />
+                  Indian F&O Market Sessions Analysis
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Profit & Loss, win rate, and brokerage distribution broken down by market phase
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 w-fit">
+                NSE / BSE Derivatives Timeline
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sessionList.map((slot) => {
+                const isProfitable = slot.netPnl > 0;
+                const hasTrades = slot.trades > 0;
+                return (
+                  <div
+                    key={slot.key}
+                    className={`p-4 rounded-2xl border transition-all ${
+                      hasTrades 
+                        ? isProfitable
+                          ? 'bg-[#14213d]/60 light:bg-emerald-50/50 border-emerald-500/30'
+                          : 'bg-[#291726]/60 light:bg-rose-50/50 border-rose-500/30'
+                        : 'bg-[#111a2e]/60 light:bg-slate-50 border-[#1e2942] opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <h4 className="font-bold text-sm text-white light:text-slate-900">{slot.name}</h4>
+                        <span className="text-[11px] font-mono text-cyan-400 font-semibold">{slot.label}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black font-mono ${
+                        !hasTrades 
+                          ? 'bg-slate-800 text-slate-400' 
+                          : isProfitable 
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                            : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                      }`}>
+                        {hasTrades ? `${slot.winRate}% Win Rate` : 'No Trades'}
+                      </span>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 mb-3">{slot.description}</p>
+
+                    <div className="space-y-1.5 text-xs pt-2 border-t border-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Total Trades</span>
+                        <span className="font-bold font-mono text-white light:text-slate-900">{slot.trades}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Gross Realised P&L</span>
+                        <span className={`font-bold font-mono ${slot.grossPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {slot.grossPnl >= 0 ? '+' : ''}{formatINR(slot.grossPnl)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Brokerage & Taxes</span>
+                        <span className="font-mono text-amber-400">-{formatINR(slot.charges)}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                        <span className="font-bold text-slate-300 light:text-slate-700">Net In-Hand P&L</span>
+                        <span className={`font-black font-mono text-sm ${slot.netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {slot.netPnl >= 0 ? '+' : ''}{formatINR(slot.netPnl)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Hour-by-Hour Breakdown Table */}
+          <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#1e2942] pb-4">
+              <div>
+                <h3 className="text-base font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-400" />
+                  Hour-by-Hour Execution & P&L Matrix
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Granular performance comparison for every hour of the trading day
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#16223b] light:bg-slate-100 border-b border-[#1e2942] text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3 px-4">Hour Window</th>
+                    <th className="py-3 px-4">Session Type</th>
+                    <th className="py-3 px-4 text-center">Trades</th>
+                    <th className="py-3 px-4 text-center">Win Rate</th>
+                    <th className="py-3 px-4 text-right">Gross P&L</th>
+                    <th className="py-3 px-4 text-right">Brokerage & Taxes</th>
+                    <th className="py-3 px-4 text-right">Net In-Hand P&L</th>
+                    <th className="py-3 px-4 text-right">Avg / Trade</th>
+                    <th className="py-3 px-4 text-center">Edge Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1e2942] light:divide-slate-200">
+                  {hourlyList.map((hr) => {
+                    const hasTrades = hr.trades > 0;
+                    const isWin = hr.netPnl > 0;
+                    return (
+                      <tr key={hr.key} className="hover:bg-[#16223b]/50 light:hover:bg-slate-50 transition-colors">
+                        <td className="py-3.5 px-4 font-bold font-mono text-white light:text-slate-900">
+                          {hr.label}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-400">
+                          {hr.description}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-200 light:text-slate-800">
+                          {hr.trades}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-bold">
+                          {hasTrades ? (
+                            <span className={`px-2 py-0.5 rounded-md ${hr.winRate >= 50 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`}>
+                              {hr.winRate}%
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">-</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-bold">
+                          {hasTrades ? (
+                            <span className={hr.grossPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                              {hr.grossPnl >= 0 ? '+' : ''}{formatINR(hr.grossPnl)}
+                            </span>
+                          ) : <span className="text-slate-500">₹0.00</span>}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono text-amber-400 font-medium">
+                          {hasTrades ? `-${formatINR(hr.charges)}` : '₹0.00'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black">
+                          {hasTrades ? (
+                            <span className={hr.netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                              {hr.netPnl >= 0 ? '+' : ''}{formatINR(hr.netPnl)}
+                            </span>
+                          ) : <span className="text-slate-500">₹0.00</span>}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-300 light:text-slate-700">
+                          {hasTrades ? (
+                            <span className={hr.avgPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                              {hr.avgPnl >= 0 ? '+' : ''}{formatINR(hr.avgPnl)}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {!hasTrades ? (
+                            <span className="text-[10px] text-slate-500 px-2 py-0.5 rounded bg-slate-800/50">Inactive</span>
+                          ) : isWin ? (
+                            <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                              Prime Edge 🚀
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-rose-400 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30">
+                              Chop Zone ⚠️
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section 3: AI Timing Insights & Behavioral Edge Advice */}
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-900/30 via-indigo-900/20 to-purple-900/30 border border-blue-500/30 shadow-xl flex items-start gap-4">
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div className="space-y-1.5 text-xs leading-relaxed">
+              <h4 className="font-black text-sm text-white light:text-slate-900">
+                AI Execution Timing Takeaways & Option Buyer Edge
+              </h4>
+              <p className="text-slate-300 light:text-slate-700">
+                • <strong>Opening 09:15 - 10:00 AM:</strong> Market mein maximum option volatility aur delta momentum isi window mein hota hai. Aapka highest profit yahi se ban raha hai.
+              </p>
+              <p className="text-slate-300 light:text-slate-700">
+                • <strong>Midday 11:30 AM - 01:30 PM:</strong> Is window mein smart money sideways pinning aur theta decay karti hai. Option buyers ko is time overtrading se bachna chahiye.
+              </p>
+              <p className="text-slate-300 light:text-slate-700">
+                • <strong>Golden Rule:</strong> Apna daily target agar subah pehle 1-2 trades mein hit ho jaye, to screen close karke capital protect karein! 🛡️
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
