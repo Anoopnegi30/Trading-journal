@@ -31,6 +31,7 @@ export const AiChatWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [aiMode, setAiMode] = useState<"gemini" | "builtin">("gemini");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const firstName = userProfile?.name ? userProfile.name.split(" ")[0] : "Anoop";
@@ -39,7 +40,7 @@ export const AiChatWidget: React.FC = () => {
     {
       id: "1",
       sender: "ai",
-      text: `Namaste ${firstName}! 🙏 Main hoon aapka **Institutional AI Options Trading Guru & Market Operator Analyst** (Powered by Gemini 3.6 Flash & Live NSE Feed).\n\nMain real-time **NIFTY, BANK NIFTY, SENSEX** ki Live Option Chain, PCR, Max Pain, Open Interest (OI) buildup aur Smart Money Liquidity Zones track kar raha hoon.\n\nAap mujhse kisi bhi index ka **Live Setup, Entry, Strict SL, Target, Operator Trap Analysis ya Journal Review** pooch sakte hain! 🚀`,
+      text: `Namaste ${firstName}! 🙏 Main hoon aapka **Institutional AI Options Trading Guru & Market Operator Analyst** (Powered by Google Gemini 3.6 & Live NSE Feed).\n\nMain real-time **NIFTY, BANK NIFTY, SENSEX** ki Live Option Chain, PCR, Max Pain, Open Interest (OI) buildup aur Smart Money Liquidity Zones track kar raha hoon.\n\nAap mujhse kisi bhi index ka **Live Setup, Entry, Strict SL, Target, Operator Trap Analysis ya Journal Review** pooch sakte hain! 🚀`,
       time: "Just now"
     }
   ]);
@@ -76,6 +77,7 @@ export const AiChatWidget: React.FC = () => {
         body: JSON.stringify({
           userQuery: userText.trim(),
           symbol,
+          mode: aiMode,
           clientDate: new Date().toISOString().split('T')[0],
           tradesContext: trades,
           userProfile: userProfile || { name: firstName }
@@ -293,33 +295,59 @@ export const AiChatWidget: React.FC = () => {
 
       {/* Interactive Chat Window */}
       {isOpen && (
-        <div className="hidden lg:flex fixed bottom-18 right-5 z-50 w-96 rounded-3xl bg-[#111a2e] light:bg-white border-2 border-cyan-500/30 shadow-2xl flex-col h-[520px] animate-in fade-in slide-in-from-bottom-5 duration-150 overflow-hidden">
+        <div className="hidden lg:flex fixed bottom-18 right-5 z-50 w-96 rounded-3xl bg-[#111a2e] light:bg-white border-2 border-cyan-500/30 shadow-2xl flex-col h-[530px] animate-in fade-in slide-in-from-bottom-5 duration-150 overflow-hidden">
           
-          {/* Header */}
-          <div className="p-4 bg-gradient-to-r from-[#0d182e] via-[#112347] to-[#0d182e] border-b border-[#1e2942] light:border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 border border-cyan-400/40 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30">
-                <Sparkles className="w-4 h-4 stroke-[2.5]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h4 className="font-black text-xs text-white light:text-slate-900">
-                    AI Options Guru & Operator Assistant
-                  </h4>
+          {/* Header with Engine Toggle */}
+          <div className="p-3.5 bg-gradient-to-r from-[#0d182e] via-[#112347] to-[#0d182e] border-b border-[#1e2942] light:border-slate-200 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 border border-cyan-400/40 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30">
+                  <Sparkles className="w-4 h-4 stroke-[2.5]" />
                 </div>
-                <p className="text-[10px] text-cyan-400 flex items-center gap-1.5 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> 
-                  <span>Google Gemini 3.6 Flash Active</span>
-                </p>
+                <div>
+                  <h4 className="font-black text-xs text-white light:text-slate-900">
+                    AI Options Guru & Operator
+                  </h4>
+                  <p className="text-[10px] text-cyan-400 flex items-center gap-1 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> 
+                    <span>{aiMode === "gemini" ? "Google Gemini 3.6 Flash Active" : "Built-in Fast Engine Active"}</span>
+                  </p>
+                </div>
               </div>
+
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 rounded-xl bg-[#16223b] hover:bg-[#203055] text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-xl bg-[#16223b] hover:bg-[#203055] text-slate-400 hover:text-white transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {/* Engine Mode Switcher Bar */}
+            <div className="flex items-center bg-[#0a1222] p-1 rounded-xl border border-cyan-500/20 text-[10px]">
+              <button
+                onClick={() => setAiMode("gemini")}
+                className={`flex-1 py-1 px-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  aiMode === "gemini" 
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30" 
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Gemini 3.6 Live</span>
+              </button>
+              <button
+                onClick={() => setAiMode("builtin")}
+                className={`flex-1 py-1 px-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  aiMode === "builtin" 
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30" 
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <Bot className="w-3 h-3" />
+                <span>Built-in Fast Engine</span>
+              </button>
+            </div>
           </div>
 
           {/* Chat Messages Body */}

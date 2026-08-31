@@ -1224,7 +1224,21 @@ RULES FOR YOUR RESPONSES:
           (b.date + (b.time || '')).localeCompare(a.date + (a.time || ''))
         );
 
-        // Try Gemini 1.5 Flash API
+        const mode = body.mode || 'gemini';
+
+        // If user specifically chose Built-in mode, return smart journal engine immediately
+        if (mode === 'builtin') {
+          const builtinReply = generateSmartJournalReply(userQuery);
+          return new Response(JSON.stringify({
+            success: true,
+            reply: builtinReply,
+            model: 'institutional-journal-ai'
+          }), {
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        // Try Gemini 3.6 Flash Live Neural Engine
         try {
           const contents = [
             {
@@ -1233,7 +1247,7 @@ RULES FOR YOUR RESPONSES:
             }
           ];
 
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiApiKey}`;
           const geminiRes = await fetch(geminiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1254,7 +1268,7 @@ RULES FOR YOUR RESPONSES:
               return new Response(JSON.stringify({
                 success: true,
                 reply: candidateText,
-                model: 'gemini-1.5-flash'
+                model: 'gemini-3.6-flash'
               }), {
                 headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
               });
