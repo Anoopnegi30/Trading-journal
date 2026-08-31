@@ -66,18 +66,18 @@ export const RiskManagementPage: React.FC = () => {
   const [calcCapital, setCalcCapital] = useState<number>(userProfile?.initialCapital || 50000);
   const [calcRiskPercent, setCalcRiskPercent] = useState<number>(2.0);
   const [instrument, setInstrument] = useState<string>('NIFTY');
-  const [lotSize, setLotSize] = useState<number>(25);
+  const [lotSize, setLotSize] = useState<number>(65);
   const [entryPrice, setEntryPrice] = useState<string>('100');
   const [stopLossPrice, setStopLossPrice] = useState<string>('90');
   const [targetMultiplier, setTargetMultiplier] = useState<number>(2.0);
 
   const handleInstrumentChange = (inst: string) => {
     setInstrument(inst);
-    if (inst === 'NIFTY') setLotSize(25);
-    else if (inst === 'BANKNIFTY') setLotSize(15);
-    else if (inst === 'FINNIFTY') setLotSize(25);
-    else if (inst === 'MIDCPNIFTY') setLotSize(75);
-    else if (inst === 'SENSEX') setLotSize(10);
+    if (inst === 'NIFTY') setLotSize(65);
+    else if (inst === 'BANKNIFTY') setLotSize(30);
+    else if (inst === 'FINNIFTY') setLotSize(65);
+    else if (inst === 'MIDCPNIFTY') setLotSize(120);
+    else if (inst === 'SENSEX') setLotSize(20);
     else if (inst === 'CUSTOM') {
       // Keep existing lot size
     } else {
@@ -266,11 +266,11 @@ export const RiskManagementPage: React.FC = () => {
 
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {[
-                  { name: 'NIFTY', lot: 25 },
-                  { name: 'BANKNIFTY', lot: 15 },
-                  { name: 'FINNIFTY', lot: 25 },
-                  { name: 'MIDCPNIFTY', lot: 75 },
-                  { name: 'SENSEX', lot: 10 },
+                  { name: 'NIFTY', lot: 65 },
+                  { name: 'BANKNIFTY', lot: 30 },
+                  { name: 'FINNIFTY', lot: 65 },
+                  { name: 'MIDCPNIFTY', lot: 120 },
+                  { name: 'SENSEX', lot: 20 },
                   { name: 'CUSTOM', lot: lotSize }
                 ].map((item) => (
                   <button

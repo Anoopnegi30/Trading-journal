@@ -34,9 +34,9 @@ interface IndexMeta {
 
 const INDICES_CONFIG: Record<IndexKey, IndexMeta> = {
   NIFTY: { name: "Nifty 50", symbol: "NIFTY", strikeStep: 50, lotSize: 65, expiryDay: "Thursday" },
-  BANKNIFTY: { name: "Bank Nifty", symbol: "BANKNIFTY", strikeStep: 100, lotSize: 15, expiryDay: "Wednesday" },
-  FINNIFTY: { name: "Fin Nifty", symbol: "FINNIFTY", strikeStep: 50, lotSize: 40, expiryDay: "Tuesday" },
-  SENSEX: { name: "BSE Sensex", symbol: "SENSEX", strikeStep: 100, lotSize: 10, expiryDay: "Friday" }
+  BANKNIFTY: { name: "Bank Nifty", symbol: "BANKNIFTY", strikeStep: 100, lotSize: 30, expiryDay: "Wednesday" },
+  FINNIFTY: { name: "Fin Nifty", symbol: "FINNIFTY", strikeStep: 50, lotSize: 65, expiryDay: "Tuesday" },
+  SENSEX: { name: "BSE Sensex", symbol: "SENSEX", strikeStep: 100, lotSize: 20, expiryDay: "Friday" }
 };
 
 interface StrikeItem {
