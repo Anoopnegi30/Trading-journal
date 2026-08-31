@@ -188,60 +188,71 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
           <form onSubmit={handleConnectAndSync} className="space-y-4 text-xs">
             
             {/* Quick 3-Step Guide Box */}
-            <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-blue-500/20 space-y-2 text-slate-300 light:text-slate-700">
+            <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-emerald-500/30 space-y-2.5 text-slate-300 light:text-slate-700">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-blue-400 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-amber-400" /> How to get your Dhan Access Token (10 Seconds):
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-emerald-400" />
+                  <span className="font-bold text-xs text-white light:text-slate-900">
+                    Official DhanHQ API (100% FREE Forever)
+                  </span>
+                </div>
                 <a
                   href="https://web.dhan.co/index/profile"
                   target="_blank"
                   rel="noreferrer"
-                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm shadow-blue-500/20"
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20"
                 >
                   <span>Open Dhan Web</span>
-                  <ExternalLink className="w-3 h-3" />
+                  <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
 
-              <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-400 light:text-slate-600 pl-1 leading-relaxed">
-                <li>Log in to <strong className="text-white light:text-slate-800">web.dhan.co</strong> on your browser.</li>
-                <li>Go to <strong className="text-white light:text-slate-800">Profile &rarr; DhanHQ Trading APIs / Access Token</strong>.</li>
-                <li>Click <strong className="text-emerald-400">Generate Access Token</strong> (select <strong>30 Days</strong> validity).</li>
-                <li>Copy the Access Token and paste it below.</li>
-              </ol>
+              <div className="p-2.5 rounded-xl bg-[#0e172a] light:bg-slate-100 border border-emerald-500/20 text-[11px] space-y-1 text-slate-300 light:text-slate-700">
+                <p className="font-bold text-emerald-400">⚡ 10-Second Setup (Only once every 30 days):</p>
+                <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-300 light:text-slate-600 pl-1 leading-relaxed">
+                  <li>Upar diye gaye <strong className="text-white light:text-slate-900">"Open Dhan Web"</strong> button par click karein.</li>
+                  <li>Dhan Profile me <strong className="text-white light:text-slate-900">"DhanHQ Trading APIs"</strong> par jayein.</li>
+                  <li><strong className="text-emerald-400">"Generate Access Token"</strong> par click karke <strong className="text-white">30 Days</strong> select karein.</li>
+                  <li>Copy karke neeche paste karein aur <strong className="text-emerald-400">"Connect & Auto-Sync"</strong> dabayein!</li>
+                </ol>
+              </div>
             </div>
 
             {/* Input Fields */}
             <div className="space-y-3">
               <div>
-                <label className="block text-slate-300 light:text-slate-700 font-bold mb-1">
-                  Dhan Client ID (10-digit ID)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-300 light:text-slate-700 font-bold">
+                    Dhan Client ID
+                  </label>
+                  <span className="text-[10px] text-emerald-400 font-medium">Auto-detected</span>
+                </div>
                 <input
                   type="text"
                   required
                   value={clientId}
                   onChange={(e) => setClientId(e.target.value)}
                   placeholder="1100687559"
-                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3.5 py-2.5 text-white light:text-slate-900 font-mono text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3.5 py-2.5 text-white light:text-slate-900 font-mono text-xs focus:outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-slate-300 light:text-slate-700 font-bold">
-                    Dhan Access Token (JWT string)
+                    DhanHQ Access Token (JWT String)
                   </label>
-                  <span className="text-[10px] text-slate-400">Valid for 30 Days</span>
+                  <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
+                    30 Days Active Validity
+                  </span>
                 </div>
                 <textarea
-                  rows={4}
+                  rows={3}
                   required
                   value={accessToken}
                   onChange={(e) => setAccessToken(e.target.value)}
                   placeholder="eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9..."
-                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl p-3 text-white light:text-slate-900 font-mono text-[11px] focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl p-3 text-white light:text-slate-900 font-mono text-[11px] focus:outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
             </div>
@@ -258,7 +269,7 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
 
             <div className="flex items-center justify-between pt-2 border-t border-[#1e2942] light:border-slate-100">
               <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 256-Bit Encrypted & Saved
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Free & Saved in Cloud
               </span>
 
               <div className="flex gap-2">
@@ -272,10 +283,10 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
                 <button
                   type="submit"
                   disabled={isSyncing}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold transition-all shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                  <span>{isSyncing ? "Connecting & Syncing..." : "Connect & Auto-Sync"}</span>
+                  <span>{isSyncing ? "Connecting Dhan..." : "Connect & Auto-Sync"}</span>
                 </button>
               </div>
             </div>
