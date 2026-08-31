@@ -66,22 +66,20 @@ export const RiskManagementPage: React.FC = () => {
   const [calcCapital, setCalcCapital] = useState<number>(userProfile?.initialCapital || 50000);
   const [calcRiskPercent, setCalcRiskPercent] = useState<number>(2.0);
   const [instrument, setInstrument] = useState<string>('NIFTY');
-  const [lotSize, setLotSize] = useState<number>(65);
+  const [customLotSize, setCustomLotSize] = useState<string>('65');
   const [entryPrice, setEntryPrice] = useState<string>('100');
   const [stopLossPrice, setStopLossPrice] = useState<string>('90');
   const [targetMultiplier, setTargetMultiplier] = useState<number>(2.0);
 
   const handleInstrumentChange = (inst: string) => {
     setInstrument(inst);
-    if (inst === 'NIFTY') setLotSize(65);
-    else if (inst === 'BANKNIFTY') setLotSize(30);
-    else if (inst === 'FINNIFTY') setLotSize(65);
-    else if (inst === 'MIDCPNIFTY') setLotSize(120);
-    else if (inst === 'SENSEX') setLotSize(20);
+    if (inst === 'NIFTY') setCustomLotSize('65');
+    else if (inst === 'BANKNIFTY') setCustomLotSize('30');
+    else if (inst === 'FINNIFTY') setCustomLotSize('65');
+    else if (inst === 'MIDCPNIFTY') setCustomLotSize('120');
+    else if (inst === 'SENSEX') setCustomLotSize('20');
     else if (inst === 'CUSTOM') {
-      // Keep existing lot size
-    } else {
-      setLotSize(1);
+      setCustomLotSize('');
     }
   };
 
@@ -90,10 +88,14 @@ export const RiskManagementPage: React.FC = () => {
   const riskPerShare = Math.abs(numEntry - numSL);
   const maxAllowedRiskRupees = Math.round((calcCapital * calcRiskPercent) / 100);
 
+  const parsedLotSize = parseInt(customLotSize, 10);
+  const hasSpecificLot = !isNaN(parsedLotSize) && parsedLotSize > 1;
+  const effectiveLot = hasSpecificLot ? parsedLotSize : 1;
+
   // Allowed quantity calculation
   const rawQty = riskPerShare > 0 ? Math.floor(maxAllowedRiskRupees / riskPerShare) : 0;
-  const calculatedLots = lotSize > 1 ? Math.max(1, Math.floor(rawQty / lotSize)) : 0;
-  const calculatedQty = lotSize > 1 ? calculatedLots * lotSize : Math.max(1, rawQty);
+  const calculatedLots = hasSpecificLot ? Math.max(1, Math.floor(rawQty / effectiveLot)) : 0;
+  const calculatedQty = hasSpecificLot ? calculatedLots * effectiveLot : Math.max(1, rawQty);
 
   const totalCapitalRequired = Math.round(calculatedQty * numEntry);
   const totalRiskAtSL = Math.round(calculatedQty * riskPerShare);
@@ -249,15 +251,13 @@ export const RiskManagementPage: React.FC = () => {
                   <div className="flex items-center gap-1.5 bg-[#16223b] border border-blue-500/50 rounded-xl px-2.5 py-1">
                     <input
                       type="number"
-                      min="1"
-                      value={lotSize}
+                      value={customLotSize}
                       onChange={(e) => {
-                        const val = Math.max(1, parseInt(e.target.value, 10) || 1);
-                        setLotSize(val);
+                        setCustomLotSize(e.target.value);
                         setInstrument('CUSTOM');
                       }}
-                      className="w-16 bg-transparent text-center text-white font-mono font-black text-xs focus:outline-none"
-                      placeholder="Lot Size"
+                      className="w-16 bg-transparent text-center text-white font-mono font-black text-xs focus:outline-none placeholder:text-slate-600"
+                      placeholder="e.g. 50"
                     />
                     <span className="text-[10px] text-slate-400 font-mono">qty/lot</span>
                   </div>
@@ -271,7 +271,7 @@ export const RiskManagementPage: React.FC = () => {
                   { name: 'FINNIFTY', lot: 65 },
                   { name: 'MIDCPNIFTY', lot: 120 },
                   { name: 'SENSEX', lot: 20 },
-                  { name: 'CUSTOM', lot: lotSize }
+                  { name: 'CUSTOM', lot: customLotSize }
                 ].map((item) => (
                   <button
                     key={item.name}
@@ -284,7 +284,9 @@ export const RiskManagementPage: React.FC = () => {
                     }`}
                   >
                     <div>{item.name}</div>
-                    <div className="text-[9px] opacity-75 font-mono">Lot: {item.name === 'CUSTOM' ? lotSize : item.lot}</div>
+                    <div className="text-[9px] opacity-75 font-mono">
+                      {item.name === 'CUSTOM' ? (customLotSize ? `Lot: ${customLotSize}` : 'Custom Lot') : `Lot: ${item.lot}`}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -357,7 +359,11 @@ export const RiskManagementPage: React.FC = () => {
               <div className="p-3 rounded-xl bg-[#111a2e]/80 border border-[#1e2942]">
                 <span className="text-[10px] text-slate-400">Total Quantity to Buy</span>
                 <div className="text-xl font-black text-white font-mono mt-0.5">
-                  {calculatedQty} <span className="text-xs text-slate-400 font-normal">({calculatedLots} lot{calculatedLots > 1 ? 's' : ''})</span>
+                  {calculatedQty} {hasSpecificLot && (
+                    <span className="text-xs text-slate-400 font-normal">
+                      ({calculatedLots} lot{calculatedLots > 1 ? 's' : ''})
+                    </span>
+                  )}
                 </div>
               </div>
 
