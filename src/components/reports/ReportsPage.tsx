@@ -29,7 +29,7 @@ import {
   Sparkles,
   Zap
 } from 'lucide-react';
-import { formatINR, calculateDashboardStats } from '../../utils/calculations';
+import { formatINR, calculateDashboardStats, getMistakesBreakdown } from '../../utils/calculations';
 
 type ReportTab = 'Performance' | 'Time of Day' | 'Psychology' | 'Risk' | 'Journal';
 
@@ -329,6 +329,84 @@ export const ReportsPage: React.FC = () => {
   const highestWinRateHour = activeHours.length > 0
     ? activeHours.reduce((prev, cur) => cur.winRate > prev.winRate ? cur : prev, activeHours[0])
     : null;
+
+  // ==========================================
+  // Psychology & Behavioral Calculations
+  // ==========================================
+  const mistakesList = getMistakesBreakdown(validTrades);
+
+  const emotionMapData: Record<string, { name: string; icon: string; desc: string; trades: number; wins: number; losses: number; netPnl: number; winRate: number }> = {
+    Disciplined: { name: 'Disciplined & Calm', icon: '🧘', desc: 'Executed strictly according to rules', trades: 0, wins: 0, losses: 0, netPnl: 0, winRate: 0 },
+    FOMO: { name: 'FOMO (Chasing)', icon: '⚡', desc: 'Chased moving candles without setup', trades: 0, wins: 0, losses: 0, netPnl: 0, winRate: 0 },
+    Greed: { name: 'Greed / Overconfidence', icon: '💰', desc: 'Over-leveraged or refused to book target', trades: 0, wins: 0, losses: 0, netPnl: 0, winRate: 0 },
+    Revenge: { name: 'Revenge Trading', icon: '🔥', desc: 'Emotional impulse after taking a loss', trades: 0, wins: 0, losses: 0, netPnl: 0, winRate: 0 },
+    Fear: { name: 'Fear / Hesitation', icon: '😨', desc: 'Exited early or hesitated on valid entry', trades: 0, wins: 0, losses: 0, netPnl: 0, winRate: 0 },
+    Anxious: { name: 'Anxious / Stressed', icon: '😰', desc: 'Over-sizing caused excessive heartbeat', trades: 0, wins: 0, losses: 0, netPnl: 0, winRate: 0 }
+  };
+
+  validTrades.forEach(t => {
+    const emo = (t.emotion || 'Disciplined').trim();
+    let matchedKey = 'Disciplined';
+    if (emo.includes('FOMO')) matchedKey = 'FOMO';
+    else if (emo.includes('Greed')) matchedKey = 'Greed';
+    else if (emo.includes('Revenge')) matchedKey = 'Revenge';
+    else if (emo.includes('Fear')) matchedKey = 'Fear';
+    else if (emo.includes('Anxious')) matchedKey = 'Anxious';
+    else matchedKey = 'Disciplined';
+
+    const entry = emotionMapData[matchedKey];
+    if (entry) {
+      entry.trades += 1;
+      if (t.netPnl > 0) entry.wins += 1;
+      else if (t.netPnl < 0) entry.losses += 1;
+      entry.netPnl += t.netPnl;
+    }
+  });
+
+  Object.values(emotionMapData).forEach(e => {
+    e.winRate = e.trades > 0 ? Math.round((e.wins / e.trades) * 100) : 0;
+  });
+
+  const emotionList = Object.values(emotionMapData);
+  const revengeCount = validTrades.filter(t => t.emotion === 'Revenge').length;
+
+  // Confidence Level correlation
+  const confidenceRanges = {
+    high: { range: 'High Conviction (80-100%)', desc: 'A+ Setup with multi-timeframe confluence', trades: 0, wins: 0, pnl: 0, winRate: 0 },
+    mid: { range: 'Medium Conviction (50-70%)', desc: 'Standard setup with partial confluence', trades: 0, wins: 0, pnl: 0, winRate: 0 },
+    low: { range: 'Low Conviction (0-40%)', desc: 'Impulsive or doubtful execution', trades: 0, wins: 0, pnl: 0, winRate: 0 }
+  };
+
+  validTrades.forEach(t => {
+    const c = t.confidence !== undefined ? t.confidence : 80;
+    let bucket = confidenceRanges.high;
+    if (c >= 80) bucket = confidenceRanges.high;
+    else if (c >= 50) bucket = confidenceRanges.mid;
+    else bucket = confidenceRanges.low;
+
+    bucket.trades += 1;
+    if (t.netPnl > 0) bucket.wins += 1;
+    bucket.pnl += t.netPnl;
+  });
+
+  Object.values(confidenceRanges).forEach(b => {
+    b.winRate = b.trades > 0 ? Math.round((b.wins / b.trades) * 100) : 0;
+  });
+
+  const confidenceList = Object.values(confidenceRanges);
+
+  const getMistakePrescription = (mistakeName: string): string => {
+    const fixes: Record<string, string> = {
+      'Exited Early': 'Position ko 2 parts mein divide karein: 50% Qty 1:1.5 par aur remaining 50% ko Cost SL ke sath hold karein.',
+      'FOMO Entry': 'Market aage nikal gaya to retest ka wait karein; green candle ko chase na karein.',
+      'Ignored Stoploss': 'System Stop Loss order lagayein, mental SL kabhi execute nahi hota.',
+      'Overtrading': 'Daily maximum 3 trades ka hard rule set karein. Target ya max loss hit hote hi terminal band karein.',
+      'Revenge Trading': 'Loss lene ke baad kam se kam 30 minute ke liye chart se dur walk par jayein.',
+      'Averaging Down': 'Losing position mein kabhi add mat karein; sirf winning position mein pyramid karein.',
+      'Chasing Price': 'Limit order lagakar apne price aane ka intezar karein.'
+    };
+    return fixes[mistakeName] || 'Strict checklist aur risk management rules follow karein.';
+  };
 
   return (
     <div className="space-y-6">
@@ -1085,41 +1163,240 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: PSYCHOLOGY */}
+      {/* TAB 2: PSYCHOLOGY & TRADER BEHAVIOR */}
       {/* ========================================================================= */}
       {activeReportTab === 'Psychology' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400">Emotional Discipline Index</span>
-              <Brain className="w-5 h-5 text-blue-400" />
+        <div className="space-y-6">
+          {/* Executive Behavioral Health Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400">Discipline Index</span>
+                <Brain className="w-5 h-5 text-blue-400" />
+              </div>
+              <div className="text-3xl font-black text-white light:text-slate-900 font-mono">
+                {stats.confidenceScore}%
+              </div>
+              <p className="text-xs text-emerald-400 font-medium">High Mindset Stability</p>
             </div>
-            <div className="text-3xl font-black text-white light:text-slate-900">
-              {stats.confidenceScore}%
+
+            <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400">Plan Adherence</span>
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="text-3xl font-black text-emerald-400 font-mono">
+                {validTrades.length > 0 ? Math.round((validTrades.filter(t => t.followedPlan).length / validTrades.length) * 100) : 100}%
+              </div>
+              <p className="text-xs text-slate-400">Executed strictly by setup checklist</p>
             </div>
-            <p className="text-xs text-slate-300 light:text-slate-600">{stats.confidenceDesc}</p>
+
+            <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400">Risk Rule Adherence</span>
+                <ShieldCheck className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div className="text-3xl font-black text-indigo-400 font-mono">
+                {validTrades.length > 0 ? Math.round((validTrades.filter(t => t.followedRisk).length / validTrades.length) * 100) : 100}%
+              </div>
+              <p className="text-xs text-slate-400">Strict Stop Loss & Position Sizing</p>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400">Revenge Trades</span>
+                <Zap className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="text-3xl font-black text-emerald-400 font-mono">
+                {revengeCount}
+              </div>
+              <p className="text-xs text-emerald-400 font-medium">Clean Emotional Streak 🔥</p>
+            </div>
           </div>
 
-          <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400">Trading Plan Adherence</span>
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          {/* Section 1: Emotion vs P&L Matrix */}
+          <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1e2942] pb-4">
+              <div>
+                <h3 className="text-base font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  Emotional State vs Profitability Matrix
+                </h3>
+                <p className="text-xs text-slate-400">
+                  How your psychological mood directly affects your trading win rate and net P&L
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 w-fit">
+                Behavioral Edge
+              </span>
             </div>
-            <div className="text-3xl font-black text-emerald-400">
-              {validTrades.length > 0 ? Math.round((validTrades.filter(t => t.followedPlan).length / validTrades.length) * 100) : 100}%
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {emotionList.map((emo) => {
+                const hasTrades = emo.trades > 0;
+                const isProfitable = emo.netPnl >= 0;
+                return (
+                  <div
+                    key={emo.name}
+                    className={`p-4 rounded-2xl border transition-all ${
+                      hasTrades
+                        ? isProfitable
+                          ? 'bg-[#14213d]/60 light:bg-emerald-50/50 border-emerald-500/30'
+                          : 'bg-[#291726]/60 light:bg-rose-50/50 border-rose-500/30'
+                        : 'bg-[#111a2e]/60 light:bg-slate-50 border-[#1e2942] opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{emo.icon}</span>
+                        <div>
+                          <h4 className="font-bold text-sm text-white light:text-slate-900">{emo.name}</h4>
+                          <span className="text-[10px] text-slate-400">{emo.desc}</span>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black font-mono ${
+                        !hasTrades 
+                          ? 'bg-slate-800 text-slate-400' 
+                          : isProfitable 
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                            : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                      }`}>
+                        {hasTrades ? `${emo.winRate}% Win Rate` : '0 Trades'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs pt-3 border-t border-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Trades Executed</span>
+                        <span className="font-bold font-mono text-white light:text-slate-900">{emo.trades}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Wins / Losses</span>
+                        <span className="font-mono text-slate-300">
+                          <span className="text-emerald-400 font-bold">{emo.wins}W</span> / <span className="text-rose-400 font-bold">{emo.losses}L</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                        <span className="font-bold text-slate-300 light:text-slate-700">Net Profit / Loss</span>
+                        <span className={`font-black font-mono text-sm ${emo.netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {emo.netPnl >= 0 ? '+' : ''}{formatINR(emo.netPnl)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <p className="text-xs text-slate-400">Trades executed fully according to predefined checklist</p>
           </div>
 
-          <div className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400">Risk Rule Adherence</span>
-              <ShieldCheck className="w-5 h-5 text-indigo-400" />
+          {/* Section 2: Mistakes & Capital Leakage Breakdown */}
+          <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1e2942] pb-4">
+              <div>
+                <h3 className="text-base font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-400" />
+                  Trading Mistakes & Financial Leakage Analysis
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Exact loss amount caused by psychological trading errors and how to eliminate them
+                </p>
+              </div>
             </div>
-            <div className="text-3xl font-black text-indigo-400">
-              {validTrades.length > 0 ? Math.round((validTrades.filter(t => t.followedRisk).length / validTrades.length) * 100) : 100}%
+
+            {mistakesList.length === 0 ? (
+              <div className="py-8 text-center text-slate-400">
+                <ShieldCheck className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
+                <p className="font-bold text-emerald-400">Zero Execution Mistakes Recorded! 🎉</p>
+                <p className="text-xs text-slate-500">You are following your rules and trade plan perfectly.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#16223b] light:bg-slate-100 border-b border-[#1e2942] text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="py-3 px-4">Mistake Type</th>
+                      <th className="py-3 px-4 text-center">Frequency</th>
+                      <th className="py-3 px-4 text-right">Capital Loss (₹)</th>
+                      <th className="py-3 px-4 text-center">% of Total Loss</th>
+                      <th className="py-3 px-4">AI Psychological Fix</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1e2942] light:divide-slate-200">
+                    {mistakesList.map((m) => (
+                      <tr key={m.name} className="hover:bg-[#16223b]/50 light:hover:bg-slate-50 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-white light:text-slate-900 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                          <span>{m.name}</span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-200">
+                          {m.tradeCount} trade(s)
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-rose-400">
+                          -₹{m.totalLoss}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-bold text-amber-400">
+                          {m.percentage}%
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-300 light:text-slate-700 text-xs">
+                          {getMistakePrescription(m.name)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Confidence Correlation & Psychologist Takeaways */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Confidence vs Performance */}
+            <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
+              <h3 className="text-base font-black text-white light:text-slate-900 flex items-center gap-2 border-b border-[#1e2942] pb-3">
+                <Scale className="w-5 h-5 text-cyan-400" />
+                Confidence Level vs Edge Correlation
+              </h3>
+              <div className="space-y-3 text-xs">
+                {confidenceList.map((c) => (
+                  <div key={c.range} className="p-3.5 rounded-2xl bg-[#16223b]/60 border border-[#1e2942] flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-white light:text-slate-900">{c.range}</div>
+                      <div className="text-[11px] text-slate-400">{c.desc} • {c.trades} trade(s)</div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-mono font-bold ${c.winRate >= 50 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {c.trades > 0 ? `${c.winRate}% Win Rate` : '-'}
+                      </div>
+                      <div className={`font-mono font-black text-xs ${c.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {c.trades > 0 ? (c.pnl >= 0 ? '+' : '') + formatINR(c.pnl) : '₹0.00'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="text-xs text-slate-400">Trades with strict Stop Loss and position sizing</p>
+
+            {/* AI Trading Psychologist Advice */}
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-purple-900/30 via-indigo-900/20 to-blue-900/30 border border-purple-500/30 shadow-xl space-y-4">
+              <h3 className="text-base font-black text-white light:text-slate-900 flex items-center gap-2 border-b border-white/10 pb-3">
+                <Brain className="w-5 h-5 text-purple-400" />
+                AI Trading Psychologist Mindset Prescription
+              </h3>
+              <div className="space-y-3 text-xs leading-relaxed text-slate-300 light:text-slate-700">
+                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                  <p className="font-bold text-purple-300 mb-1">🎯 1. Execution Stability:</p>
+                  <p>Aapka revenge trade count <strong>0</strong> hai, jo institutional mindset ka sabse bada indicator hai. Loss lene ke baad market se badla lene ke bajay shant rehna aapki sabse badi strength hai.</p>
+                </div>
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <p className="font-bold text-blue-300 mb-1">⚖️ 2. Target Patience & Early Exits:</p>
+                  <p>Target aane se pehle nikalne ke darr ko door karne ke liye position ko 2 parts mein divide karein: 50% Qty 1:1.5 par book karein aur remaining 50% ko Cost-to-Cost (SL to Entry) trail karke pura move capture karein!</p>
+                </div>
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="font-bold text-emerald-300 mb-1">🛡️ 3. Daily Profit Preservation Rule:</p>
+                  <p>Jab subah green mein close ho jaye, to rest of the day ka maximum risk aapke din ke profit ka sirf 20-30% hona chahiye taaki aap kabhi bhi Green Day ko Red Day mein convert na karein!</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
