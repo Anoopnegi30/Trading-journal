@@ -248,13 +248,25 @@ export const TradesPage: React.FC = () => {
 
       {/* Sync / Import Feedback Banner */}
       {syncFeedback && (
-        <div className={`p-3 rounded-2xl border text-xs font-semibold flex items-center justify-between animate-in fade-in duration-200 ${
+        <div className={`p-3.5 rounded-2xl border text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200 ${
           syncFeedback.type === 'success'
             ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-            : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+            : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
         }`}>
-          <span>{syncFeedback.message}</span>
-          <button onClick={() => setSyncFeedback(null)} className="text-slate-400 hover:text-white">✕</button>
+          <div className="flex items-center gap-2">
+            <span>{syncFeedback.message}</span>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {syncFeedback.type === 'error' && (syncFeedback.message.includes('401') || syncFeedback.message.includes('expired') || syncFeedback.message.includes('token') || syncFeedback.message.includes('credentials')) && (
+              <button
+                onClick={() => setShowBrokerModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-md transition-all cursor-pointer whitespace-nowrap"
+              >
+                ⚡ Update Dhan Access Token
+              </button>
+            )}
+            <button onClick={() => setSyncFeedback(null)} className="text-slate-400 hover:text-white p-1">✕</button>
+          </div>
         </div>
       )}
 
