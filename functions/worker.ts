@@ -68,6 +68,114 @@ export default {
     const url = new URL(request.url);
 
     // ==========================================
+    // DhanHQ OAuth 2.0 Consent & SSO Login Routes
+    // ==========================================
+    if (url.pathname === '/api/dhan-generate-consent' && request.method === 'POST') {
+      try {
+        const body: any = await request.json();
+        const { clientId, appId, appSecret } = body;
+
+        const cleanClientId = (clientId || '1100687559').trim();
+        const cleanAppId = (appId || '').trim();
+        const cleanAppSecret = (appSecret || '').trim();
+
+        // 1. If user has App ID & App Secret, call Dhan generate-consent API
+        if (cleanAppId && cleanAppSecret) {
+          const consentRes = await fetch(`https://auth.dhan.co/app/generate-consent?client_id=${cleanClientId}`, {
+            method: 'POST',
+            headers: {
+              'app_id': cleanAppId,
+              'app_secret': cleanAppSecret,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (consentRes.ok) {
+            const consentData: any = await consentRes.json();
+            const consentAppId = consentData.consentAppId || consentData.data?.consentAppId;
+            if (consentAppId) {
+              return new Response(JSON.stringify({
+                success: true,
+                consentAppId,
+                loginUrl: `https://auth.dhan.co/login/consentApp-login?consentAppId=${consentAppId}`
+              }), {
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+              });
+            }
+          }
+        }
+
+        // 2. Direct Dhan Web Login Redirect Fallback
+        return new Response(JSON.stringify({
+          success: true,
+          loginUrl: 'https://web.dhan.co/index/profile'
+        }), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+
+    if (url.pathname === '/api/dhan-consume-consent' && request.method === 'POST') {
+      try {
+        const body: any = await request.json();
+        const { tokenId, appId, appSecret, clientId } = body;
+
+        if (!tokenId) {
+          return new Response(JSON.stringify({ success: false, error: 'Missing tokenId from Dhan callback' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+
+        const consumeRes = await fetch(`https://auth.dhan.co/app/consumeApp-consent?tokenId=${encodeURIComponent(tokenId)}`, {
+          method: 'POST',
+          headers: {
+            'app_id': appId || '',
+            'app_secret': appSecret || '',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (consumeRes.ok) {
+          const consumeData: any = await consumeRes.json();
+          const freshToken = consumeData.accessToken || consumeData.data?.accessToken;
+          if (freshToken) {
+            // Save fresh token in DB
+            if (env.DB) {
+              const creds = { clientId: clientId || '1100687559', accessToken: freshToken, appId, appSecret };
+              await env.DB.prepare(
+                'INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)'
+              ).bind('dhanCredentials', JSON.stringify(creds), new Date().toISOString()).run();
+            }
+
+            return new Response(JSON.stringify({
+              success: true,
+              accessToken: freshToken,
+              message: 'Dhan OAuth Connected Successfully!'
+            }), {
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+            });
+          }
+        }
+
+        return new Response(JSON.stringify({ success: false, error: 'Failed to exchange Dhan tokenId' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    }
+
+    // ==========================================
     // DhanHQ Live Trade Sync API Route
     // ==========================================
     if (url.pathname === '/api/dhan-sync' && request.method === 'POST') {

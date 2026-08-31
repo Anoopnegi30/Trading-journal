@@ -150,6 +150,32 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
     }
   };
 
+  const [authMode, setAuthMode] = useState<"oauth" | "permanent" | "token">("oauth");
+  const [appId, setAppId] = useState("");
+  const [appSecret, setAppSecret] = useState("");
+
+  const handleOAuthConnect = async () => {
+    setIsSyncing(true);
+    setSyncError("");
+    try {
+      const res = await fetch('/api/dhan-generate-consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: clientId.trim(), appId: appId.trim(), appSecret: appSecret.trim() })
+      });
+      const data: any = await res.json();
+      setIsSyncing(false);
+      if (data.success && data.loginUrl) {
+        window.open(data.loginUrl, '_blank');
+      } else {
+        setSyncError(data.error || "Failed to generate Dhan OAuth consent URL");
+      }
+    } catch (e: any) {
+      setIsSyncing(false);
+      setSyncError(e.message || "Network error while connecting to Dhan");
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto">
@@ -178,6 +204,43 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
           </button>
         </div>
 
+        {/* Tab Selection: 1-Click Login vs Permanent Secret vs Token */}
+        <div className="flex items-center bg-[#0d1627] p-1 rounded-xl border border-emerald-500/20 text-xs font-bold">
+          <button
+            onClick={() => setAuthMode("oauth")}
+            className={`flex-1 py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              authMode === "oauth" 
+                ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20" 
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>1-Click Dhan Login</span>
+          </button>
+          <button
+            onClick={() => setAuthMode("permanent")}
+            className={`flex-1 py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              authMode === "permanent" 
+                ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20" 
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span>Permanent App Secret</span>
+          </button>
+          <button
+            onClick={() => setAuthMode("token")}
+            className={`flex-1 py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              authMode === "token" 
+                ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20" 
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>24H Access Token</span>
+          </button>
+        </div>
+
         {syncSuccess ? (
           <div className="p-8 text-center space-y-3">
             <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto animate-bounce" />
@@ -185,83 +248,160 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
             <p className="text-xs text-slate-400">Your journal has been synchronized with your live Dhan account.</p>
           </div>
         ) : (
-          <form onSubmit={handleConnectAndSync} className="space-y-4 text-xs">
+          <div className="space-y-4 text-xs">
             
-            {/* Quick 3-Step Guide Box */}
-            <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-emerald-500/30 space-y-2.5 text-slate-300 light:text-slate-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-emerald-400" />
-                  <span className="font-bold text-xs text-white light:text-slate-900">
-                    Official DhanHQ API (100% FREE Forever)
-                  </span>
+            {authMode === "oauth" && (
+              <div className="space-y-4 animate-in fade-in">
+                <div className="p-4 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-emerald-500/30 space-y-3 text-slate-300 light:text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <h4 className="font-bold text-sm text-white light:text-slate-900">
+                        Direct Dhan SSO Login (Zero Token Copying)
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Aap Dhan ke official login page par mobile number & OTP daalenge aur journal automatically connect ho jayega!
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 light:text-slate-700 font-bold mb-1">
+                      Dhan Client ID
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={clientId}
+                      onChange={(e) => setClientId(e.target.value)}
+                      placeholder="1100687559"
+                      className="w-full bg-[#0d1627] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3.5 py-2.5 text-white light:text-slate-900 font-mono text-xs focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleOAuthConnect}
+                    disabled={isSyncing}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-black text-sm shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  >
+                    <Zap className={`w-4 h-4 fill-white ${isSyncing ? "animate-spin" : ""}`} />
+                    <span>{isSyncing ? "Opening Dhan Portal..." : "🚀 Login with Dhan (Official Connect)"}</span>
+                  </button>
                 </div>
-                <a
-                  href="https://web.dhan.co/index/profile"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20"
+              </div>
+            )}
+
+            {authMode === "permanent" && (
+              <form onSubmit={handleConnectAndSync} className="space-y-4 animate-in fade-in">
+                <div className="p-3.5 rounded-2xl bg-[#16223b] border border-blue-500/30 space-y-2 text-slate-300 text-[11px]">
+                  <p className="font-bold text-blue-400 flex items-center gap-1">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" /> Permanent App Credentials (Never Expires):
+                  </p>
+                  <p className="text-slate-400 leading-relaxed">
+                    Dhan Web Profile &rarr; <strong>Access DhanHQ APIs</strong> se apna <strong>App ID & App Secret</strong> copy karein. Isse journal background me roz bina token expiry ke connect rahega!
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">Dhan Client ID</label>
+                    <input
+                      type="text"
+                      required
+                      value={clientId}
+                      onChange={(e) => setClientId(e.target.value)}
+                      placeholder="1100687559"
+                      className="w-full bg-[#16223b] border border-[#23355b] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">Dhan App ID (API Key)</label>
+                    <input
+                      type="text"
+                      value={appId}
+                      onChange={(e) => setAppId(e.target.value)}
+                      placeholder="dhan_app_xxxx"
+                      className="w-full bg-[#16223b] border border-[#23355b] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">Dhan App Secret</label>
+                    <input
+                      type="password"
+                      value={appSecret}
+                      onChange={(e) => setAppSecret(e.target.value)}
+                      placeholder="••••••••••••••••••••"
+                      className="w-full bg-[#16223b] border border-[#23355b] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSyncing}
+                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>Open Dhan Web</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                  <span>{isSyncing ? "Saving & Syncing..." : "Save Permanent Credentials"}</span>
+                </button>
+              </form>
+            )}
 
-              <div className="p-2.5 rounded-xl bg-[#0e172a] light:bg-slate-100 border border-emerald-500/20 text-[11px] space-y-1 text-slate-300 light:text-slate-700">
-                <p className="font-bold text-emerald-400">⚡ 10-Second Setup (Only once every 30 days):</p>
-                <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-300 light:text-slate-600 pl-1 leading-relaxed">
-                  <li>Upar diye gaye <strong className="text-white light:text-slate-900">"Open Dhan Web"</strong> button par click karein.</li>
-                  <li>Dhan Profile me <strong className="text-white light:text-slate-900">"DhanHQ Trading APIs"</strong> par jayein.</li>
-                  <li><strong className="text-emerald-400">"Generate Access Token"</strong> par click karke <strong className="text-white">30 Days</strong> select karein.</li>
-                  <li>Copy karke neeche paste karein aur <strong className="text-emerald-400">"Connect & Auto-Sync"</strong> dabayein!</li>
-                </ol>
-              </div>
-            </div>
-
-            {/* Input Fields */}
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-300 light:text-slate-700 font-bold">
-                    Dhan Client ID
-                  </label>
-                  <span className="text-[10px] text-emerald-400 font-medium">Auto-detected</span>
+            {authMode === "token" && (
+              <form onSubmit={handleConnectAndSync} className="space-y-4 animate-in fade-in">
+                <div className="p-3 rounded-2xl bg-[#16223b] border border-amber-500/30 space-y-1 text-slate-300 text-[11px]">
+                  <p className="font-bold text-amber-400 flex items-center gap-1">
+                    <Lock className="w-3.5 h-3.5" /> 24-Hour Access Token (Dhan Web):
+                  </p>
+                  <p className="text-slate-400">
+                    web.dhan.co profile se generated daily JWT token ko direct paste karke sync karein.
+                  </p>
                 </div>
-                <input
-                  type="text"
-                  required
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  placeholder="1100687559"
-                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl px-3.5 py-2.5 text-white light:text-slate-900 font-mono text-xs focus:outline-none focus:border-emerald-500 transition-colors"
-                />
-              </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-300 light:text-slate-700 font-bold">
-                    DhanHQ Access Token (JWT String)
-                  </label>
-                  <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
-                    30 Days Active Validity
-                  </span>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">Dhan Client ID</label>
+                    <input
+                      type="text"
+                      required
+                      value={clientId}
+                      onChange={(e) => setClientId(e.target.value)}
+                      placeholder="1100687559"
+                      className="w-full bg-[#16223b] border border-[#23355b] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">Access Token String</label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={accessToken}
+                      onChange={(e) => setAccessToken(e.target.value)}
+                      placeholder="eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9..."
+                      className="w-full bg-[#16223b] border border-[#23355b] rounded-xl p-2.5 text-white font-mono text-[11px] focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
                 </div>
-                <textarea
-                  rows={3}
-                  required
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value)}
-                  placeholder="eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9..."
-                  className="w-full bg-[#16223b] light:bg-slate-100 border border-[#23355b] light:border-slate-300 rounded-xl p-3 text-white light:text-slate-900 font-mono text-[11px] focus:outline-none focus:border-emerald-500 transition-colors"
-                />
-              </div>
-            </div>
+
+                <button
+                  type="submit"
+                  disabled={isSyncing}
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                  <span>{isSyncing ? "Syncing Trades..." : "Sync with Access Token"}</span>
+                </button>
+              </form>
+            )}
 
             {syncError && (
               <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2 animate-in fade-in">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
                 <div className="space-y-1">
-                  <p className="font-bold text-rose-400">Authentication Failed (401)</p>
+                  <p className="font-bold text-rose-400">Connection Failed</p>
                   <p className="text-[11px] leading-relaxed">{syncError}</p>
                 </div>
               </div>
@@ -269,29 +409,19 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
 
             <div className="flex items-center justify-between pt-2 border-t border-[#1e2942] light:border-slate-100">
               <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Free & Saved in Cloud
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Free Official DhanHQ Integration
               </span>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSyncing}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold transition-all shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                  <span>{isSyncing ? "Connecting Dhan..." : "Connect & Auto-Sync"}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer text-xs"
+              >
+                Close
+              </button>
             </div>
 
-          </form>
+          </div>
         )}
 
       </div>
