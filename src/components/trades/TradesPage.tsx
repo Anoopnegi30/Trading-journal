@@ -24,7 +24,8 @@ import {
   Building,
   TrendingUp,
   Receipt,
-  Wallet
+  Wallet,
+  Settings
 } from 'lucide-react';
 import { BrokerModal } from '../profile/BrokerModal';
 
@@ -223,16 +224,25 @@ export const TradesPage: React.FC = () => {
             ))}
           </select>
 
-          {/* Dhan Live Auto-Sync Button */}
-          <button
-            onClick={handleDhanSyncClick}
-            disabled={isDhanSyncing}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs font-bold border border-emerald-500/30 transition-all cursor-pointer disabled:opacity-50"
-            title="Auto-fetch today's trades from DhanHQ API"
-          >
-            <Zap className={`w-3.5 h-3.5 ${isDhanSyncing ? 'animate-spin' : ''}`} />
-            <span>{isDhanSyncing ? 'Syncing...' : 'Sync Dhan'}</span>
-          </button>
+          {/* Dhan Live Auto-Sync Button Group */}
+          <div className="flex items-center gap-1 bg-emerald-600/15 border border-emerald-500/30 rounded-xl p-0.5">
+            <button
+              onClick={handleDhanSyncClick}
+              disabled={isDhanSyncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              title="Auto-fetch today's trades from DhanHQ API"
+            >
+              <Zap className={`w-3.5 h-3.5 ${isDhanSyncing ? 'animate-spin' : ''}`} />
+              <span>{isDhanSyncing ? 'Syncing...' : 'Sync Dhan'}</span>
+            </button>
+            <button
+              onClick={() => setShowBrokerModal(true)}
+              className="p-1.5 text-emerald-400/70 hover:text-emerald-300 hover:bg-emerald-500/20 rounded-lg transition-colors cursor-pointer"
+              title="Dhan Connection & OAuth Settings"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
           {/* CSV Export Button */}
           <button

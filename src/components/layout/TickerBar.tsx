@@ -19,7 +19,7 @@ import { ShareJournalModal } from '../profile/ShareJournalModal';
 import { EditProfileModal } from '../profile/EditProfileModal';
 
 export const TickerBar: React.FC = () => {
-  const { ticker, theme, toggleTheme, resetToSampleData, userProfile, logout } = useTradeContext();
+  const { ticker, theme, toggleTheme, resetToSampleData, userProfile, dhanCredentials, logout } = useTradeContext();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showBrokerModal, setShowBrokerModal] = useState(false);
@@ -106,6 +106,20 @@ export const TickerBar: React.FC = () => {
                 theme === 'dark' ? 'left-1' : 'left-7'
               }`}
             />
+          </button>
+
+          {/* Dhan Broker Integration Quick Button */}
+          <button
+            onClick={() => setShowBrokerModal(true)}
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+              dhanCredentials?.accessToken
+                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25"
+                : "bg-[#16223b] light:bg-slate-100 border-[#23355b] light:border-slate-300 text-slate-300 light:text-slate-700 hover:text-white hover:border-emerald-500/50"
+            }`}
+            title="Dhan Broker Connection & Auto-Sync"
+          >
+            <span className={`w-2 h-2 rounded-full ${dhanCredentials?.accessToken ? "bg-emerald-400 animate-pulse" : "bg-slate-400"}`} />
+            <span>{dhanCredentials?.accessToken ? "Dhan Connected" : "Connect Dhan"}</span>
           </button>
 
           {/* Profile Dropdown */}
