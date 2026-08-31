@@ -330,8 +330,8 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       let newlyAddedCount = 0;
 
       setTrades(prev => {
-        // Fingerprint generator for trade deduplication
-        const getFingerprint = (t: any) => `${t.date}_${(t.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${t.quantity}_${t.direction}`;
+        // Fingerprint generator for trade deduplication (includes date + time + symbol + qty)
+        const getFingerprint = (t: any) => `${t.date}_${(t.time || '').trim()}_${(t.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${t.quantity}`;
 
         // Deduplicate existing list first
         const seenFingerprints = new Set<string>();

@@ -138,105 +138,145 @@ export default {
           });
         }
 
-        // Group trades by Symbol to pair Buy & Sell executions
-        const symbolMap = new Map<string, { buys: any[]; sells: any[] }>();
-        for (const item of list) {
-          const sym = item.tradingSymbol || item.customSymbol || 'NIFTY';
-          const group = symbolMap.get(sym) || { buys: [], sells: [] };
-          const type = (item.transactionType || '').toUpperCase();
-          if (type === 'BUY') group.buys.push(item);
-          else group.sells.push(item);
-          symbolMap.set(sym, group);
-        }
+        // Sort all executed fills chronologically
+        const sortedFills = [...list].sort((a: any, b: any) => {
+          const timeA = a.exchangeTime || a.createTime || '';
+          const timeB = b.exchangeTime || b.createTime || '';
+          return timeA.localeCompare(timeB);
+        });
 
-        const parsedTrades: any[] = [];
+        // FIFO Matching Algorithm for exact individual round-trip trades
+        const fifoMap: Record<string, any[]> = {};
+        const rawCompletedTrades: any[] = [];
         const todayStr = new Date().toISOString().split('T')[0];
 
-        for (const [sym, group] of symbolMap.entries()) {
-          const totalBuyQty = group.buys.reduce((sum, b) => sum + (b.tradedQuantity || b.quantity || 0), 0);
-          const totalSellQty = group.sells.reduce((sum, s) => sum + (s.tradedQuantity || s.quantity || 0), 0);
-          const matchedQty = Math.min(totalBuyQty, totalSellQty) || totalBuyQty || totalSellQty || 1;
+        for (const fill of sortedFills) {
+          const sym = fill.tradingSymbol || fill.customSymbol || 'NIFTY';
+          const ttype = (fill.transactionType || '').toUpperCase();
+          const qty = fill.tradedQuantity || fill.quantity || 0;
+          const price = fill.tradedPrice || fill.price || 0;
+          const timeStr = fill.exchangeTime || fill.createTime || '';
+          const orderId = String(fill.orderId || fill.exchangeOrderId || '');
 
-          const totalBuyValue = group.buys.reduce((sum, b) => sum + ((b.tradedPrice || b.price || 0) * (b.tradedQuantity || b.quantity || 0)), 0);
-          const totalSellValue = group.sells.reduce((sum, s) => sum + ((s.tradedPrice || s.price || 0) * (s.tradedQuantity || s.quantity || 0)), 0);
+          if (!fifoMap[sym]) fifoMap[sym] = [];
+          const queue = fifoMap[sym];
+          let remQty = qty;
 
-          const avgBuyPrice = totalBuyQty > 0 ? Number((totalBuyValue / totalBuyQty).toFixed(2)) : 0;
-          const avgSellPrice = totalSellQty > 0 ? Number((totalSellValue / totalSellQty).toFixed(2)) : 0;
+          while (remQty > 0 && queue.length > 0 && queue[0].type !== ttype) {
+            const entryFill = queue[0];
+            const matchQty = Math.min(remQty, entryFill.remQty);
 
-          // For Option Buyer: Profit = (Sell - Buy) * Qty
-          const isOptionBuying = sym.toUpperCase().includes('CE') || sym.toUpperCase().includes('PE') || group.buys.length > 0;
-          const entryPrice = isOptionBuying ? avgBuyPrice : (avgSellPrice || avgBuyPrice);
-          const exitPrice = isOptionBuying ? avgSellPrice : avgBuyPrice;
+            const isOptionBuying = sym.toUpperCase().includes('CE') || sym.toUpperCase().includes('PE') || entryFill.type === 'BUY';
+            const buyPrice = entryFill.type === 'BUY' ? entryFill.price : price;
+            const sellPrice = ttype === 'SELL' ? price : entryFill.price;
+            const entryPrice = isOptionBuying ? buyPrice : sellPrice;
+            const exitPrice = isOptionBuying ? sellPrice : buyPrice;
+            const entryTime = entryFill.time || '09:30';
+            const exitTime = timeStr || '09:35';
 
-          // Exact Indian F&O Brokerage & Government Taxes:
-          // Brokerage: ₹20/order (Buy: ₹20 + Sell: ₹20 = ₹40)
-          // STT: 0.0625% on sell premium turnover
-          // Exchange Turnover (NSE): 0.03503%
-          // GST: 18% on (Brokerage + Exchange)
-          // Stamp Duty: 0.003% on Buy side + SEBI turnover
-          const numOrders = (group.buys.length || 1) + (group.sells.length || 1);
-          const brokerage = numOrders * 20;
-          const stt = totalSellValue * 0.000625;
-          const exchangeCharges = (totalBuyValue + totalSellValue) * 0.0003503;
-          const gst = (brokerage + exchangeCharges) * 0.18;
-          const stampDuty = totalBuyValue * 0.00003;
-          const sebiCharges = (totalBuyValue + totalSellValue) * 0.000001;
-          const fees = Number((brokerage + stt + exchangeCharges + gst + stampDuty + sebiCharges).toFixed(2));
-          const grossPnl = Number((totalSellValue - totalBuyValue).toFixed(2));
-          const netPnl = Number((grossPnl - fees).toFixed(2));
+            const grossPnl = Number(((sellPrice - buyPrice) * matchQty).toFixed(2));
+            const buyVal = buyPrice * matchQty;
+            const sellVal = sellPrice * matchQty;
+            const brokerage = 40.0; // ₹20 Buy + ₹20 Sell
+            const stt = sellVal * 0.000625;
+            const exchangeCharges = (buyVal + sellVal) * 0.0003503;
+            const gst = (brokerage + exchangeCharges) * 0.18;
+            const stampDuty = buyVal * 0.00003;
+            const sebiCharges = (buyVal + sellVal) * 0.000001;
+            const fees = Number((brokerage + stt + exchangeCharges + gst + stampDuty + sebiCharges).toFixed(2));
+            const netPnl = Number((grossPnl - fees).toFixed(2));
 
-          const cleanSymbol = sym
-            .replace('Sep2026', '01 SEP')
-            .replace('Aug2026', '28 AUG')
-            .replace(/-/g, ' ');
+            const cleanSymbol = sym
+              .replace('Sep2026', '01 SEP')
+              .replace('Aug2026', '28 AUG')
+              .replace(/-/g, ' ');
 
-          const orderKey = group.buys[0]?.exchangeOrderId || group.buys[0]?.orderId || group.sells[0]?.exchangeOrderId || 'trade';
-          const stableId = `dhan-${todayStr}-${sym.replace(/[^a-zA-Z0-9]/g, '')}-${orderKey}`;
+            const cleanIdSym = cleanSymbol.replace(/[^a-zA-Z0-9]/g, '');
+            const tradeId = `dhan-trade-${cleanIdSym}-${entryFill.orderId}-${orderId}`;
 
-          const tradeObj = {
-            id: stableId,
-            date: todayStr,
-            time: group.buys[0]?.createTime?.split(' ')[1] || '09:30',
-            marketType: 'Indian',
-            duration: 'Intraday',
-            tradeType: isOptionBuying ? 'Option Buying' : 'Option Selling',
-            symbol: cleanSymbol,
-            direction: sym.toUpperCase().includes('PE') ? 'Short' : 'Long',
-            entryPrice: entryPrice || 100,
-            exitPrice: exitPrice || 100,
-            quantity: matchedQty,
-            totalAmount: (entryPrice || 100) * matchedQty,
-            fees,
-            pnl: grossPnl,
-            netPnl,
-            pnlPercent: entryPrice > 0 ? Number(((grossPnl / (entryPrice * matchedQty)) * 100).toFixed(2)) : 0,
-            riskReward: '1:2.0',
-            strategy: 'Dhan Auto-Sync',
-            outcome: netPnl >= 0 ? 'Full Success' : 'Loss',
-            emotion: 'Disciplined',
-            confidence: 90,
-            mistakes: [],
-            followedPlan: true,
-            followedRisk: true,
-            notes: `Auto-imported via DhanHQ API. (Buy: ₹${avgBuyPrice}, Sell: ₹${avgSellPrice}, Qty: ${matchedQty})`,
-            createdAt: new Date().toISOString()
-          };
+            rawCompletedTrades.push({
+              id: tradeId,
+              date: todayStr,
+              time: entryTime.split(' ')[1] || entryTime,
+              exitTime: exitTime.split(' ')[1] || exitTime,
+              marketType: 'Indian',
+              duration: 'Intraday',
+              tradeType: isOptionBuying ? 'Option Buying' : 'Option Selling',
+              symbol: cleanSymbol,
+              direction: sym.toUpperCase().includes('PE') ? 'Short' : 'Long',
+              entryPrice,
+              exitPrice,
+              quantity: matchQty,
+              totalAmount: entryPrice * matchQty,
+              fees,
+              pnl: grossPnl,
+              netPnl,
+              pnlPercent: entryPrice > 0 ? Number(((grossPnl / (entryPrice * matchQty)) * 100).toFixed(2)) : 0,
+              riskReward: '1:2.0',
+              strategy: 'Dhan Auto-Sync',
+              outcome: netPnl >= 0 ? 'Full Success' : 'Loss',
+              emotion: 'Disciplined',
+              confidence: 90,
+              mistakes: [],
+              followedPlan: true,
+              followedRisk: true,
+              notes: `Auto-imported via DhanHQ API. (Buy: ₹${buyPrice}, Sell: ₹${sellPrice}, Qty: ${matchQty})`,
+              createdAt: new Date().toISOString()
+            });
 
-          parsedTrades.push(tradeObj);
+            entryFill.remQty -= matchQty;
+            remQty -= matchQty;
 
-          // Save to Cloudflare D1 SQL while preserving any user-customized fields (Strategy, Mistakes, Notes, Rules)
-          if (env.DB) {
-            try {
-              const allRows: any = await env.DB.prepare('SELECT id, data FROM trades').all();
-              const fpIncoming = `${tradeObj.date}_${(tradeObj.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${tradeObj.quantity}_${tradeObj.direction}`;
+            if (entryFill.remQty <= 0) {
+              queue.shift();
+            }
+          }
+
+          if (remQty > 0) {
+            queue.push({
+              type: ttype,
+              price,
+              remQty,
+              time: timeStr,
+              orderId
+            });
+          }
+        }
+
+        // Combine partial executions of the exact same order pair
+        const parsedTrades: any[] = [];
+        for (const t of rawCompletedTrades) {
+          if (parsedTrades.length > 0 && parsedTrades[parsedTrades.length - 1].id === t.id) {
+            const last = parsedTrades[parsedTrades.length - 1];
+            const totalQ = last.quantity + t.quantity;
+            last.entryPrice = Number((((last.entryPrice * last.quantity) + (t.entryPrice * t.quantity)) / totalQ).toFixed(2));
+            last.exitPrice = Number((((last.exitPrice * last.quantity) + (t.exitPrice * t.quantity)) / totalQ).toFixed(2));
+            last.quantity = totalQ;
+            last.totalAmount = last.entryPrice * totalQ;
+            last.pnl = Number((last.pnl + t.pnl).toFixed(2));
+            last.fees = Number((last.fees + t.fees).toFixed(2));
+            last.netPnl = Number((last.pnl - last.fees).toFixed(2));
+            last.pnlPercent = last.entryPrice > 0 ? Number(((last.pnl / (last.entryPrice * totalQ)) * 100).toFixed(2)) : 0;
+            last.outcome = last.netPnl >= 0 ? 'Full Success' : 'Loss';
+          } else {
+            parsedTrades.push(t);
+          }
+        }
+
+        // Save each round-trip trade to Cloudflare D1 while preserving user edits
+        if (env.DB) {
+          try {
+            const allRows: any = await env.DB.prepare('SELECT id, data FROM trades').all();
+            
+            for (const tradeObj of parsedTrades) {
+              const fpIncoming = `${tradeObj.date}_${tradeObj.time}_${(tradeObj.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${tradeObj.quantity}`;
               
               for (const r of (allRows.results || [])) {
                 if (r.data) {
                   try {
                     const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
-                    const fpExisting = `${d.date}_${(d.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${d.quantity}_${d.direction}`;
+                    const fpExisting = `${d.date}_${d.time}_${(d.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${d.quantity}`;
                     if (r.id === tradeObj.id || fpExisting === fpIncoming) {
-                      // Preserve all user manual edits!
                       if (d.strategy && d.strategy !== 'Dhan Auto-Sync') tradeObj.strategy = d.strategy;
                       if (d.emotion) tradeObj.emotion = d.emotion;
                       if (d.mistakes && d.mistakes.length > 0) tradeObj.mistakes = d.mistakes;
@@ -253,12 +293,12 @@ export default {
                   } catch (e) {}
                 }
               }
-            } catch (e) {}
 
-            await env.DB.prepare(
-              'INSERT OR REPLACE INTO trades (id, symbol, net_pnl, created_at, data) VALUES (?, ?, ?, ?, ?)'
-            ).bind(tradeObj.id, tradeObj.symbol, tradeObj.netPnl, tradeObj.date, JSON.stringify(tradeObj)).run();
-          }
+              await env.DB.prepare(
+                'INSERT OR REPLACE INTO trades (id, symbol, net_pnl, created_at, data) VALUES (?, ?, ?, ?, ?)'
+              ).bind(tradeObj.id, tradeObj.symbol, tradeObj.netPnl, tradeObj.date, JSON.stringify(tradeObj)).run();
+            }
+          } catch (e) {}
         }
 
         return new Response(JSON.stringify({
