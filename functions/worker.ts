@@ -224,8 +224,35 @@ export default {
 
           parsedTrades.push(tradeObj);
 
-          // Save to Cloudflare D1 SQL
+          // Save to Cloudflare D1 SQL while preserving any user-customized fields (Strategy, Mistakes, Notes, Rules)
           if (env.DB) {
+            try {
+              const allRows: any = await env.DB.prepare('SELECT id, data FROM trades').all();
+              const fpIncoming = `${tradeObj.date}_${(tradeObj.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${tradeObj.quantity}_${tradeObj.direction}`;
+              
+              for (const r of (allRows.results || [])) {
+                if (r.data) {
+                  try {
+                    const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+                    const fpExisting = `${d.date}_${(d.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${d.quantity}_${d.direction}`;
+                    if (r.id === tradeObj.id || fpExisting === fpIncoming) {
+                      // Preserve all user manual edits!
+                      if (d.strategy && d.strategy !== 'Dhan Auto-Sync') tradeObj.strategy = d.strategy;
+                      if (d.emotion) tradeObj.emotion = d.emotion;
+                      if (d.mistakes && d.mistakes.length > 0) tradeObj.mistakes = d.mistakes;
+                      if (d.notes && !d.notes.startsWith('Auto-imported')) tradeObj.notes = d.notes;
+                      if (d.rules) tradeObj.rules = d.rules;
+                      if (d.lessonLearned) tradeObj.lessonLearned = d.lessonLearned;
+                      if (d.chartImage) tradeObj.chartImage = d.chartImage;
+                      if (d.riskReward) tradeObj.riskReward = d.riskReward;
+                      if (d.outcome) tradeObj.outcome = d.outcome;
+                      if (d.confidence) tradeObj.confidence = d.confidence;
+                    }
+                  } catch (e) {}
+                }
+              }
+            } catch (e) {}
+
             await env.DB.prepare(
               'INSERT OR REPLACE INTO trades (id, symbol, net_pnl, created_at, data) VALUES (?, ?, ?, ?, ?)'
             ).bind(tradeObj.id, tradeObj.symbol, tradeObj.netPnl, tradeObj.date, JSON.stringify(tradeObj)).run();

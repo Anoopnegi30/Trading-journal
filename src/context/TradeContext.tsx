@@ -547,6 +547,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateTrade = (id: string, updatedFields: Partial<Trade>) => {
     setTrades(prev => {
       const next = prev.map(t => (t.id === id ? { ...t, ...updatedFields } : t));
+      localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(next));
       const updatedItem = next.find(t => t.id === id);
       if (updatedItem) saveTradeToCloud(updatedItem);
       return next;
