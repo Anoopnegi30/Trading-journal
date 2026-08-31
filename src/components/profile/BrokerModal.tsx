@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, CheckCircle2, RefreshCw, ShieldCheck, ExternalLink, Key, AlertTriangle, Zap, Lock, Smartphone } from "lucide-react";
 import { useTradeContext } from "../../context/TradeContext";
 
@@ -32,6 +32,9 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
 
   const [clientId, setClientId] = useState(dhanCredentials?.clientId || "1100687559");
   const [accessToken, setAccessToken] = useState(dhanCredentials?.accessToken || "");
+  const [authMode, setAuthMode] = useState<"oauth" | "permanent" | "token">("oauth");
+  const [appId, setAppId] = useState("");
+  const [appSecret, setAppSecret] = useState("");
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [connectedBrokers, setConnectedBrokers] = useState<string[]>(() => {
@@ -40,6 +43,11 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [syncError, setSyncError] = useState("");
+
+  useEffect(() => {
+    if (dhanCredentials?.clientId) setClientId(dhanCredentials.clientId);
+    if (dhanCredentials?.accessToken) setAccessToken(dhanCredentials.accessToken);
+  }, [dhanCredentials]);
 
   if (!isOpen) return null;
 
@@ -149,10 +157,6 @@ export const BrokerModal: React.FC<BrokerModalProps> = ({ isOpen, onClose }) => 
       }, 1000);
     }
   };
-
-  const [authMode, setAuthMode] = useState<"oauth" | "permanent" | "token">("oauth");
-  const [appId, setAppId] = useState("");
-  const [appSecret, setAppSecret] = useState("");
 
   const handleOAuthConnect = async () => {
     setIsSyncing(true);
