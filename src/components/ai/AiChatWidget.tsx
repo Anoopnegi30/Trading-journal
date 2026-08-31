@@ -76,6 +76,7 @@ export const AiChatWidget: React.FC = () => {
         body: JSON.stringify({
           userQuery: userText.trim(),
           symbol,
+          clientDate: new Date().toISOString().split('T')[0],
           tradesContext: trades,
           userProfile: userProfile || { name: firstName }
         })

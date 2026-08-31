@@ -944,13 +944,48 @@ export default {
         const maxPain = atmStrike;
         const highestCallOI = atmStrike + cfg.strikeStep * 2;
         const highestPutOI = atmStrike - cfg.strikeStep * 2;
-        const pcr = 1.08;
-
         const userName = userProfile?.name || 'Anoop Negi';
-        const totalTrades = tradesContext.length || 0;
-        const wins = tradesContext.filter((t: any) => (t.netPnl || t.pnl) > 0).length;
-        const totalPnl = tradesContext.reduce((acc: number, t: any) => acc + (t.netPnl || t.pnl || 0), 0);
+        const clientDate = body.clientDate || new Date().toISOString().split('T')[0];
+
+        // Detailed Trade Logs formatting
+        const validTrades = Array.isArray(tradesContext) ? tradesContext.filter((t: any) => !t.isNoTradeDay) : [];
+        const totalTrades = validTrades.length;
+        const winTrades = validTrades.filter((t: any) => (t.netPnl || t.pnl) > 0);
+        const lossTrades = validTrades.filter((t: any) => (t.netPnl || t.pnl) < 0);
+        const wins = winTrades.length;
+        const totalPnl = validTrades.reduce((acc: number, t: any) => acc + (t.netPnl || t.pnl || 0), 0);
         const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : '0';
+
+        // Find today's trades and latest trading date
+        const todayTrades = validTrades.filter((t: any) => t.date === clientDate);
+        const sortedDates = [...new Set(validTrades.map((t: any) => t.date))].sort().reverse();
+        const latestTradeDate = sortedDates.length > 0 ? sortedDates[0] : clientDate;
+        const latestDayTrades = validTrades.filter((t: any) => t.date === latestTradeDate);
+
+        // Daily breakdown map
+        const dailySummary: Record<string, { trades: number; wins: number; losses: number; pnl: number; symbols: string[] }> = {};
+        validTrades.forEach((t: any) => {
+          if (!dailySummary[t.date]) {
+            dailySummary[t.date] = { trades: 0, wins: 0, losses: 0, pnl: 0, symbols: [] };
+          }
+          dailySummary[t.date].trades += 1;
+          const net = t.netPnl !== undefined ? t.netPnl : (t.pnl || 0);
+          if (net > 0) dailySummary[t.date].wins += 1;
+          else if (net < 0) dailySummary[t.date].losses += 1;
+          dailySummary[t.date].pnl += net;
+          if (t.symbol && !dailySummary[t.date].symbols.includes(t.symbol)) {
+            dailySummary[t.date].symbols.push(t.symbol);
+          }
+        });
+
+        const tradeLogsFormatted = validTrades.map((t: any, idx: number) => {
+          const net = t.netPnl !== undefined ? t.netPnl : (t.pnl || 0);
+          return `Trade #${idx + 1}: Date=${t.date}, Time=${t.time || 'N/A'}, Symbol=${t.symbol || 'N/A'}, Direction=${t.direction || 'Long'}, Qty=${t.quantity || 0}, Entry=₹${t.entryPrice || 0}, Exit=₹${t.exitPrice || 0}, StopLoss=₹${t.stopLoss || 0}, Target=₹${t.target || 0}, Net P&L=₹${Number(net).toFixed(2)} (${net >= 0 ? 'PROFIT' : 'LOSS'}), Strategy=${t.strategy || 'General'}, Outcome=${t.outcome || 'N/A'}, Mistakes=${t.mistakes || 'None'}, Emotion=${t.emotion || 'Calm'}`;
+        }).join('\n');
+
+        const dailyLogsFormatted = Object.entries(dailySummary).map(([date, d]) => {
+          return `- Date: ${date} -> ${d.trades} Trades (${d.wins}W / ${d.losses}L), Net P&L: ₹${d.pnl.toFixed(2)}, Traded: ${d.symbols.join(', ')}`;
+        }).join('\n');
 
         const systemPrompt = `You are Antigravity AI Options Intelligence & 30+ Years Veteran Institutional F&O Operator on Dalal Street & Wall Street.
 You have mastery in Indian Index Options (NIFTY, BANK NIFTY, FINNIFTY, SENSEX), Option Chain Open Interest (OI) buildup, Put-Call Ratio (PCR), Max Pain Theory, Smart Money Concepts (SMC), Order Blocks, Fair Value Gaps (FVG), VWAP, 9/15 EMA, Liquidity Sweeps, Retail Traps, and Capital Preservation.
@@ -966,20 +1001,38 @@ LIVE REAL-TIME DERIVATIVES FEED FOR THIS SECOND:
 - ATM Strike: ${atmStrike}
 - Standard Lot Size: ${cfg.lotSize}
 
-USER REAL TRADING JOURNAL CONTEXT:
+USER REAL TRADING JOURNAL DATA (COMPLETE FACTUAL KNOWLEDGE):
+- Current Client Date (Today): ${clientDate}
+- Latest Active Trading Day in Journal: ${latestTradeDate}
 - Total Logged Trades: ${totalTrades}
-- Real Win Rate: ${winRate}% (${wins} Wins / ${totalTrades - wins} Losses)
-- Net Realised P&L: ₹${totalPnl}
-- Rules: Strict 5-8 pts SL in Nifty, Book Partial Quantity, Max 2 trades/day.
+- Overall Real Win Rate: ${winRate}% (${wins} Wins / ${lossTrades.length} Losses)
+- Overall Net Realised P&L: ₹${totalPnl.toFixed(2)}
+
+TODAY'S & LATEST DAY ACTIVITY:
+- Today (${clientDate}) Activity: ${todayTrades.length > 0 
+    ? `${todayTrades.length} trades executed today with Net P&L ₹${todayTrades.reduce((s, t) => s + (t.netPnl !== undefined ? t.netPnl : t.pnl || 0), 0).toFixed(2)}.` 
+    : `0 trades logged with exact date ${clientDate}. (Latest logged active day is ${latestTradeDate} with ${latestDayTrades.length} trades and Net P&L ₹${latestDayTrades.reduce((s, t) => s + (t.netPnl !== undefined ? t.netPnl : t.pnl || 0), 0).toFixed(2)}).`
+  }
+
+DATE-BY-DATE JOURNAL PERFORMANCE:
+${dailyLogsFormatted || 'No daily logs.'}
+
+ALL DETAILED LOGGED TRADES:
+${tradeLogsFormatted || 'No trades logged yet.'}
 
 RULES FOR YOUR RESPONSES:
-1. If the user asks for a trade setup, levels, strike price, or direction:
+1. When user asks questions about their trading journal (e.g. "aaj mene kitni trade li hai?", "aaj ka profit/loss kya hai?", "kal kya hua tha?", "sabse bada profit kaunsa tha?", "sabse bada loss kaunsa tha?", "meri mistakes batao", "Nifty me kitna win rate hai?"):
+   - You MUST answer with 100% EXACT, ACCURATE data from the journal logs above.
+   - For "aaj kitni trade li hai?" or today's questions:
+     - Check trades on today's date (${clientDate}).
+     - If trades exist for today (${clientDate}), list all of them with time, symbol, entry, exit, quantity, and Net P&L!
+     - If today (${clientDate}) has no trades yet, say clearly: "Anoop, aaj (${clientDate}) aapne koi nayi trade nahi li hai. Aapki latest trading date (${latestTradeDate}) thi jisme aapne ${latestDayTrades.length} trades li thi..." and list those ${latestDayTrades.length} trades with exact P&L and time.
+     - Never give a generic aggregate when a specific question like "aaj kitni trade li" is asked!
+2. If the user asks for a trade setup, levels, strike price, or market direction:
    - Give an exact Institutional Trade Setup: Strike (ATM or 1-strike ITM, NEVER deep OTM), Entry Trigger (Pullback to Demand FVG on 5M close), Strict Invalidation Stop Loss (Points & ₹ Amount), Target 1 (1:1.5 - Book 60% and Trail SL to cost), Target 2 (1:2.5+), and Operator Traps to watch out for.
-2. If the user asks about Option Chain, PCR, Max Pain, or VIX:
+3. If the user asks about Option Chain, PCR, Max Pain, or VIX:
    - Explain the exact market structure, which strikes option writers are defending, and where short-covering or long-buildup will trigger.
-3. If the user asks about their Journal, Performance, or Mistakes:
-   - Review their actual trades, win rate, and psychological discipline.
-4. Keep the tone sharp, authoritative, disciplined, and supportive like a veteran Dalal Street hedge fund operator. Use bullet points and bold highlights.`;
+4. Keep the tone sharp, disciplined, authoritative, and friendly like a veteran Dalal Street hedge fund operator. Use emojis, bold numbers, and bullet points.`;
 
         const contents = [
           {
