@@ -175,6 +175,8 @@ export const NewTradeModal: React.FC = () => {
   let riskPts = 0;
   let rewardPts = 0;
   let computedRr = '1:2.0';
+  let actualCapturedPts = 0;
+  let actualCapturedRr = '';
 
   if (numEntry > 0) {
     if (numStopLoss > 0) {
@@ -194,6 +196,13 @@ export const NewTradeModal: React.FC = () => {
     if (riskPts > 0) {
       const ratio = rewardPts / riskPts;
       computedRr = `1:${ratio >= 10 ? ratio.toFixed(1) : ratio.toFixed(2)}`;
+
+      if (numExit > 0) {
+        const diff = direction === 'Short' ? (numExit - numEntry) : (numExit - numEntry);
+        actualCapturedPts = numExit - numEntry;
+        const capturedRatio = Math.abs(actualCapturedPts) / riskPts;
+        actualCapturedRr = `1:${capturedRatio >= 10 ? capturedRatio.toFixed(1) : capturedRatio.toFixed(2)}`;
+      }
     }
   }
 
@@ -648,11 +657,16 @@ export const NewTradeModal: React.FC = () => {
                     <Scale className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold text-slate-300 light:text-slate-700">Auto-Calculated R:R</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-bold text-slate-300 light:text-slate-700">Planned R:R:</span>
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-blue-600 text-white font-mono shadow-sm">
                         {computedRr}
                       </span>
+                      {numExit > 0 && numTarget > 0 && Math.abs(numExit - numTarget) > 0.1 && (
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold font-mono ${actualCapturedPts >= 0 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}`}>
+                          Captured: {actualCapturedRr} ({actualCapturedPts >= 0 ? '+' : ''}{actualCapturedPts.toFixed(2)} pts)
+                        </span>
+                      )}
                     </div>
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       Risk: <strong className="text-rose-400 font-mono">{riskPts.toFixed(2)} pts ({formatINR(riskPts * numQty)})</strong> • Target: <strong className="text-emerald-400 font-mono">{rewardPts.toFixed(2)} pts ({formatINR(rewardPts * numQty)})</strong>

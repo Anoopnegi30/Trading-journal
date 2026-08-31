@@ -88,9 +88,14 @@ export const TradeDetailModal: React.FC = () => {
           </div>
 
           <div>
-            <span className="text-[11px] text-slate-400 font-medium">Risk / Reward</span>
-            <p className="text-sm font-bold text-purple-400 mt-0.5">
-              {selectedTrade.riskReward || '1:2.0'}
+            <span className="text-[11px] text-slate-400 font-medium">Risk / Reward (R:R)</span>
+            <p className="text-sm font-bold text-purple-400 mt-0.5 flex items-center gap-1.5">
+              <span>{selectedTrade.riskReward || '1:2.0'}</span>
+              {selectedTrade.target && selectedTrade.exitPrice && Math.abs(selectedTrade.exitPrice - selectedTrade.target) > 0.1 && (
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                  Partial Exit
+                </span>
+              )}
             </p>
             <p className="text-[10px] text-slate-400">
               SL: ₹{selectedTrade.stopLoss || 0} | Tgt: ₹{selectedTrade.target || 0}
