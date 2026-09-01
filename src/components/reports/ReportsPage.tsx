@@ -1941,10 +1941,10 @@ export const ReportsPage: React.FC = () => {
               {/* Index Selector Tabs */}
               <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#0e1628] border border-[#1e2942] overflow-x-auto no-scrollbar">
                 {[
-                  { id: 'NIFTY', label: '📈 NIFTY 50' },
-                  { id: 'BANKNIFTY', label: '🏦 BANK NIFTY' },
-                  { id: 'FINNIFTY', label: '⚡ FINNIFTY' },
-                  { id: 'SENSEX', label: '🏛️ SENSEX' },
+                  { id: 'NIFTY', label: '📈 NIFTY 50 (65 Qty)' },
+                  { id: 'BANKNIFTY', label: '🏦 BANK NIFTY (30 Qty)' },
+                  { id: 'FINNIFTY', label: '⚡ FINNIFTY (65 Qty)' },
+                  { id: 'SENSEX', label: '🏛️ SENSEX (20 Qty)' },
                   { id: 'STOCKS', label: '💎 INTRADAY STOCKS' }
                 ].map(idx => (
                   <button
@@ -1964,60 +1964,60 @@ export const ReportsPage: React.FC = () => {
 
             {/* Tactical Blueprint Grid for Chosen Index */}
             {(() => {
-              // Exact Lot Sizes & Configurations
+              // Exact Official Lot Sizes & Configurations (NIFTY 65, BANKNIFTY 30, SENSEX 20)
               const indexConfigMap: Record<string, { name: string; defaultLotQty: number; targetPts: number; slPts: number; timeHindi: string; setupHindi: string; trapHindi: string }> = {
                 NIFTY: {
                   name: 'NIFTY 50',
-                  defaultLotQty: 25, // 25 Qty per lot (or 75)
-                  targetPts: 25,     // 25 Points Target
-                  slPts: 10,         // 10 Points Stop-Loss
+                  defaultLotQty: 65, // 1 Lot = 65 Qty
+                  targetPts: 15,     // 15 Points Target (+₹975 / lot)
+                  slPts: 7,          // 7 Points Stop-Loss (-₹455 / lot)
                   timeHindi: 'Subah 9:45 AM se 11:15 AM (Ya Dupahar 1:45 PM se 3:00 PM)',
                   setupHindi: '15-Minute Chart par Day High/Low Breakout ya VWAP Support Bounce',
                   trapHindi: '11:45 AM se 1:30 PM ke beech market sideways rehta hai, tab trade mat lena.'
                 },
                 BANKNIFTY: {
                   name: 'BANK NIFTY',
-                  defaultLotQty: 15, // 15 Qty per lot
-                  targetPts: 50,     // 50 Points Target
-                  slPts: 20,         // 20 Points Stop-Loss
+                  defaultLotQty: 30, // 1 Lot = 30 Qty
+                  targetPts: 35,     // 35 Points Target (+₹1,050 / lot)
+                  slPts: 15,         // 15 Points Stop-Loss (-₹450 / lot)
                   timeHindi: 'Subah 9:30 AM se 11:00 AM (Jab Banking leaders move karte hain)',
                   setupHindi: 'HDFC Bank & ICICI Bank dono ek hi direction me move karein tab ATM Call/Put',
                   trapHindi: 'Expiry wale din saste OTM (Hero-Zero) option mat khareedna, sirf ATM trade karna.'
                 },
                 FINNIFTY: {
                   name: 'FINNIFTY',
-                  defaultLotQty: 25,
-                  targetPts: 30,
-                  slPts: 12,
+                  defaultLotQty: 65, // 1 Lot = 65 Qty
+                  targetPts: 18,     // 18 Points Target (+₹1,170 / lot)
+                  slPts: 8,          // 8 Points Stop-Loss (-₹520 / lot)
                   timeHindi: 'Subah 10:00 AM se 11:30 AM',
                   setupHindi: 'Financial & NBFC Heavyweights Support Confirmation',
                   trapHindi: 'Badi candle bhaagte waqt beech me jump mat karna, pullback ka wait karna.'
                 },
                 SENSEX: {
                   name: 'BSE SENSEX',
-                  defaultLotQty: 10,
-                  targetPts: 80,
-                  slPts: 30,
+                  defaultLotQty: 20, // 1 Lot = 20 Qty
+                  targetPts: 50,     // 50 Points Target (+₹1,000 / lot)
+                  slPts: 20,         // 20 Points Stop-Loss (-₹400 / lot)
                   timeHindi: 'Subah 9:45 AM se 11:30 AM',
                   setupHindi: 'Reliance + HDFC Support Level Bounce',
                   trapHindi: 'Hamesha Limit Order lagakar buy karein, Market order se door rahein.'
                 },
                 STOCKS: {
                   name: 'INTRADAY STOCKS (CASH)',
-                  defaultLotQty: 1,
-                  targetPts: 1.5,
-                  slPts: 0.6,
+                  defaultLotQty: 100, // 100 Shares
+                  targetPts: 10,     // ₹10 Move (+₹1,000)
+                  slPts: 4,          // ₹4 SL (-₹400)
                   timeHindi: 'Subah 9:30 AM se 10:45 AM',
-                  setupHindi: 'Top Gainers/Losers me 1.5% Target & 0.6% Stop-Loss',
+                  setupHindi: 'Top Gainers/Losers me Level Breakout',
                   trapHindi: 'Zero Theta Decay! Sabse safe aur calm tareeka recovery karne ka.'
                 }
               };
 
               const currentConfig = indexConfigMap[selectedRecoveryIndex] || indexConfigMap.NIFTY;
-              const totalQuantity = selectedRecoveryIndex === 'STOCKS' ? 100 * recoveryLotCount : currentConfig.defaultLotQty * recoveryLotCount;
+              const totalQuantity = currentConfig.defaultLotQty * recoveryLotCount;
               
-              const rewardPerTrade = selectedRecoveryIndex === 'STOCKS' ? 750 * recoveryLotCount : currentConfig.targetPts * totalQuantity;
-              const riskPerTrade = selectedRecoveryIndex === 'STOCKS' ? 300 * recoveryLotCount : currentConfig.slPts * totalQuantity;
+              const rewardPerTrade = currentConfig.targetPts * totalQuantity;
+              const riskPerTrade = currentConfig.slPts * totalQuantity;
               
               const dailyTradesCap = 2;
               const expectedDailyGain = rewardPerTrade;
@@ -2029,12 +2029,12 @@ export const ReportsPage: React.FC = () => {
                   {/* QUANTITY & LOT SELECTOR CONTROLS */}
                   <div className="p-4 sm:p-5 rounded-2xl bg-[#16223b] border border-[#23355b] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="space-y-0.5">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aapka Position Size (Lots & Quantity):</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aapka Exact Position Size (Lots & Quantity):</span>
                       <p className="text-sm font-black text-white">
-                        {currentConfig.name} ➡️ <span className="text-emerald-400">{recoveryLotCount} Lot = {totalQuantity} Quantity</span>
+                        {currentConfig.name} ➡️ <span className="text-emerald-400 font-mono text-base">{recoveryLotCount} Lot = {totalQuantity} Quantity</span>
                       </p>
                       <p className="text-[11px] text-slate-400">
-                        {recoveryLotCount === 1 ? '✅ 1 Lot se trade karna sabse safe hai jab tak confidence wapis na aaye.' : '⚠️ 1 Lot se zyada lot lene par risk badh jata hai.'}
+                        {recoveryLotCount === 1 ? `✅ 1 Lot (${totalQuantity} Qty) se trade karna sabse safe hai jab tak capital restore na ho.` : `⚠️ ${recoveryLotCount} Lots (${totalQuantity} Qty) me risk badh jayega.`}
                       </p>
                     </div>
 
@@ -2047,7 +2047,7 @@ export const ReportsPage: React.FC = () => {
                       </button>
                       <div className="px-3 text-center">
                         <span className="text-sm font-black text-white font-mono">{recoveryLotCount} Lot</span>
-                        <p className="text-[9px] text-slate-400 font-mono">({totalQuantity} Qty)</p>
+                        <p className="text-[10px] text-emerald-400 font-mono font-bold">({totalQuantity} Qty)</p>
                       </div>
                       <button
                         onClick={() => setRecoveryLotCount(Math.min(5, recoveryLotCount + 1))}
