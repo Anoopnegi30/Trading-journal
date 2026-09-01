@@ -1,7 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "trading-journal",
-  "account_id": "39af0f15c189bfd522881734f85f1362",
   "main": "functions/worker.ts",
   "compatibility_date": "2024-09-23",
   "assets": {
@@ -12,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "trade-diary-db",
-      "database_id": "879decb4-25f7-4a46-8e53-c56ddf405884"
+      "database_id": "fa17767d-ceb0-4626-a9ca-a4136259c023"
     }
   ]
 }
