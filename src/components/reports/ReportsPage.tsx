@@ -44,8 +44,9 @@ import { formatINR, calculateDashboardStats, getMistakesBreakdown } from '../../
 type ReportTab = 'Performance' | 'Time of Day' | 'Psychology' | 'Risk' | 'Journal' | 'Bad Day Reset SOS';
 
 export const ReportsPage: React.FC = () => {
-  const { trades, dateFilter, setDateFilter, marketFilter, setMarketFilter, exportCsv } = useTradeContext();
-  const [activeReportTab, setActiveReportTab] = useState<ReportTab>('Performance');
+  const { trades, dateFilter, setDateFilter, marketFilter, setMarketFilter, reportsSubTab, setReportsSubTab, exportCsv } = useTradeContext();
+  const activeReportTab = (reportsSubTab as ReportTab) || 'Performance';
+  const setActiveReportTab = (tab: ReportTab) => setReportsSubTab(tab);
 
   // Bad Day Recovery SOS State
   const [sosLossAmount, setSosLossAmount] = useState<number>(5000);

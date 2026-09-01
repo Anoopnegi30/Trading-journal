@@ -13,7 +13,8 @@ import {
   Calendar,
   Trophy,
   Plus,
-  Zap
+  Zap,
+  AlertOctagon
 } from 'lucide-react';
 
 interface NavItem {
@@ -28,7 +29,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
-  const { activeTab, setActiveTab, setIsNewTradeModalOpen } = useTradeContext();
+  const { activeTab, setActiveTab, setReportsSubTab, setIsNewTradeModalOpen } = useTradeContext();
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -73,6 +74,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           + New Trade
+        </button>
+      </div>
+
+      {/* Emergency Bad Day Reset SOS Button in Sidebar */}
+      <div className="px-3 pb-2">
+        <button
+          onClick={() => {
+            setActiveTab('reports');
+            setReportsSubTab('Bad Day Reset SOS');
+            onNavigate?.();
+          }}
+          className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-rose-600/20 via-red-600/15 to-amber-600/20 hover:from-rose-600/30 hover:to-amber-600/30 text-rose-300 border border-rose-500/40 text-xs font-black flex items-center justify-between transition-all cursor-pointer shadow-sm group"
+        >
+          <div className="flex items-center gap-2">
+            <AlertOctagon className="w-4 h-4 text-rose-400 group-hover:animate-bounce" />
+            <span>🚨 Bad Day SOS</span>
+          </div>
+          <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500 text-white font-mono uppercase">
+            RESET
+          </span>
         </button>
       </div>
 

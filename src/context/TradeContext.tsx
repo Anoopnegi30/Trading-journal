@@ -59,6 +59,9 @@ interface TradeContextType {
   
   dateFilter: string;
   setDateFilter: (filter: string) => void;
+
+  reportsSubTab: string;
+  setReportsSubTab: (tab: string) => void;
   
   ticker: MarketTickerItem[];
   
@@ -258,6 +261,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (saved) return saved as NavTab;
     return 'dashboard';
   });
+  const [reportsSubTab, setReportsSubTab] = useState<string>('Performance');
   const [isNewTradeModalOpen, setIsNewTradeModalOpen] = useState<boolean>(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -752,6 +756,8 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setMarketFilter,
         dateFilter,
         setDateFilter,
+        reportsSubTab,
+        setReportsSubTab,
         ticker,
         strategies,
         addStrategy,
