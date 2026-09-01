@@ -110,6 +110,7 @@ const MISTAKES_STORAGE_KEY = "trade_diary_mistakes_v4";
 
 export const DEFAULT_MISTAKES: string[] = [
   "Overtrading",
+  "Impatient Entry",
   "Revenge Trading",
   "Risked Too Much",
   "Exited Too Early",
@@ -122,6 +123,36 @@ export const DEFAULT_MISTAKES: string[] = [
   "Chasing Market",
   "Hesitation / Late Entry"
 ];
+
+// Helper to normalize unfed / Dhan synced trades to Random Scalp, Overtrading, Impatient Entry, Confidence 50
+export const normalizeTrade = (t: Trade): Trade => {
+  let strat = t.strategy;
+  if (strat === 'Dhan Auto-Sync' || !strat || strat.trim() === '') {
+    strat = 'Random Scalp';
+  }
+  let mistakes = Array.isArray(t.mistakes) ? [...t.mistakes] : [];
+  let emotion = t.emotion || 'Impatient';
+  let confidence = t.confidence !== undefined && t.confidence !== null ? t.confidence : 50;
+
+  if (strat === 'Random Scalp' || (t.notes && t.notes.includes('Auto-imported')) || t.id?.startsWith('dhan-')) {
+    if (mistakes.length === 0) {
+      mistakes = ['Overtrading', 'Impatient Entry'];
+    } else {
+      if (!mistakes.includes('Overtrading')) mistakes.push('Overtrading');
+      if (!mistakes.includes('Impatient Entry')) mistakes.push('Impatient Entry');
+    }
+    confidence = 50;
+    emotion = 'Impatient';
+  }
+
+  return {
+    ...t,
+    strategy: strat,
+    mistakes,
+    emotion,
+    confidence
+  };
+};
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Anoop Negi',
@@ -221,7 +252,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const saved = localStorage.getItem(TRADES_STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map(normalizeTrade);
+        }
       } catch (e) {
         console.error('Failed to parse saved trades', e);
       }
@@ -352,7 +386,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         // Filter truly new trades from Dhan response
-        const newTrades = res.trades!.filter(t => {
+        const newTrades = res.trades!.map(normalizeTrade).filter(t => {
           const fp = getFingerprint(t);
           if (seenIds.has(t.id) || seenFingerprints.has(fp)) {
             return false;
@@ -408,10 +442,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const seenIds = new Set<string>();
         const uniqueTrades: Trade[] = [];
 
-        for (const t of cloudTrades) {
-          if (t && t.id && !seenIds.has(t.id)) {
-            seenIds.add(t.id);
-            uniqueTrades.push(t);
+        for (const rawT of cloudTrades) {
+          if (rawT && rawT.id && !seenIds.has(rawT.id)) {
+            seenIds.add(rawT.id);
+            uniqueTrades.push(normalizeTrade(rawT));
           }
         }
 

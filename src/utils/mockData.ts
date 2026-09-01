@@ -78,6 +78,15 @@ export const INITIAL_STRATEGIES: TradingStrategy[] = [
     targetRiskReward: '1:2',
     timeframe: '5 Min',
     active: true
+  },
+  {
+    id: 'strat-random-scalp',
+    name: 'Random Scalp',
+    description: 'Auto-imported or discretionary rapid scalp without formal setup confirmation.',
+    targetWinRate: '50%',
+    targetRiskReward: '1:1.5',
+    timeframe: '1 Min / 3 Min',
+    active: true
   }
 ];
 

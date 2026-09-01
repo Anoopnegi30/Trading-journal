@@ -321,13 +321,13 @@ export default {
               netPnl,
               pnlPercent: entryPrice > 0 ? Number(((grossPnl / (entryPrice * matchQty)) * 100).toFixed(2)) : 0,
               riskReward: '1:2.0',
-              strategy: 'Dhan Auto-Sync',
+              strategy: 'Random Scalp',
               outcome: netPnl >= 0 ? 'Full Success' : 'Loss',
-              emotion: 'Disciplined',
-              confidence: 90,
-              mistakes: [],
-              followedPlan: true,
-              followedRisk: true,
+              emotion: 'Impatient',
+              confidence: 50,
+              mistakes: ['Overtrading', 'Impatient Entry'],
+              followedPlan: false,
+              followedRisk: false,
               notes: `Auto-imported via DhanHQ API. (Buy: ₹${buyPrice}, Sell: ₹${sellPrice}, Qty: ${matchQty})`,
               createdAt: new Date().toISOString()
             });
@@ -385,7 +385,7 @@ export default {
                     const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
                     const fpExisting = `${d.date}_${d.time}_${(d.symbol || '').replace(/[\s\-_]/g, '').toUpperCase()}_${d.quantity}`;
                     if (r.id === tradeObj.id || fpExisting === fpIncoming) {
-                      if (d.strategy && d.strategy !== 'Dhan Auto-Sync') tradeObj.strategy = d.strategy;
+                      if (d.strategy && d.strategy !== 'Dhan Auto-Sync') tradeObj.strategy = d.strategy === 'Dhan Auto-Sync' ? 'Random Scalp' : d.strategy;
                       if (d.emotion) tradeObj.emotion = d.emotion;
                       if (d.mistakes && d.mistakes.length > 0) tradeObj.mistakes = d.mistakes;
                       if (d.notes && !d.notes.startsWith('Auto-imported')) tradeObj.notes = d.notes;
@@ -440,7 +440,20 @@ export default {
             });
           }
           const { results } = await env.DB.prepare('SELECT data FROM trades ORDER BY created_at DESC').all();
-          const trades = (results || []).map((r: any) => JSON.parse(r.data));
+          const trades = (results || []).map((r: any) => {
+            const t = JSON.parse(r.data);
+            if (t.strategy === 'Dhan Auto-Sync' || !t.strategy) {
+              t.strategy = 'Random Scalp';
+            }
+            if (!t.mistakes || t.mistakes.length === 0) {
+              if (t.notes?.includes('Auto-imported') || t.id?.startsWith('dhan-') || t.strategy === 'Random Scalp') {
+                t.mistakes = ['Overtrading', 'Impatient Entry'];
+                t.confidence = 50;
+                t.emotion = 'Impatient';
+              }
+            }
+            return t;
+          });
           return new Response(JSON.stringify({ success: true, trades }), {
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
           });

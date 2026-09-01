@@ -59,7 +59,7 @@ export const NewTradeModal: React.FC = () => {
   const [fees, setFees] = useState<number | ''>(55);
   const [stopLoss, setStopLoss] = useState<number | ''>('');
   const [target, setTarget] = useState<number | ''>('');
-  const [strategy, setStrategy] = useState('Breakout');
+  const [strategy, setStrategy] = useState('Random Scalp');
   const [outcome, setOutcome] = useState<TradeOutcome>('Full Success');
   const [analysis, setAnalysis] = useState('');
   const [selectedRules, setSelectedRules] = useState<string[]>([
@@ -71,10 +71,10 @@ export const NewTradeModal: React.FC = () => {
   const [uploadedScreenshot, setUploadedScreenshot] = useState<string | null>(null);
 
   // Psychology Tab State
-  const [entryConfidence, setEntryConfidence] = useState<number>(8); // 1-10 slider
-  const [satisfactionRating, setSatisfactionRating] = useState<number>(8); // 1-10 slider
-  const [emotionalState, setEmotionalState] = useState<string>('Disciplined');
-  const [selectedMistakes, setSelectedMistakes] = useState<string[]>([]);
+  const [entryConfidence, setEntryConfidence] = useState<number>(5); // 1-10 slider (Default 5)
+  const [satisfactionRating, setSatisfactionRating] = useState<number>(5); // 1-10 slider
+  const [emotionalState, setEmotionalState] = useState<string>('Impatient');
+  const [selectedMistakes, setSelectedMistakes] = useState<string[]>(['Overtrading', 'Impatient Entry']);
   const [lessonLearned, setLessonLearned] = useState('');
   const [isAddingMistake, setIsAddingMistake] = useState(false);
   const [newMistakeName, setNewMistakeName] = useState('');
@@ -94,12 +94,18 @@ export const NewTradeModal: React.FC = () => {
       setFees(editingTrade.fees);
       setStopLoss(editingTrade.stopLoss !== undefined && editingTrade.stopLoss !== null ? editingTrade.stopLoss : '');
       setTarget(editingTrade.target !== undefined && editingTrade.target !== null ? editingTrade.target : '');
-      setStrategy(editingTrade.strategy || 'Breakout');
+      let st = editingTrade.strategy || 'Random Scalp';
+      if (st === 'Dhan Auto-Sync') st = 'Random Scalp';
+      setStrategy(st);
       setOutcome(editingTrade.outcome || 'Full Success');
       setAnalysis(editingTrade.notes || editingTrade.analysis || '');
-      setEmotionalState(editingTrade.emotion || 'Disciplined');
-      setEntryConfidence(editingTrade.confidence ? Math.round(editingTrade.confidence / 10) : 8);
-      setSelectedMistakes(editingTrade.mistakes || []);
+      setEmotionalState(editingTrade.emotion || (st === 'Random Scalp' ? 'Impatient' : 'Disciplined'));
+      setEntryConfidence(editingTrade.confidence ? Math.round(editingTrade.confidence / 10) : (st === 'Random Scalp' ? 5 : 8));
+      
+      const loadedMistakes = editingTrade.mistakes && editingTrade.mistakes.length > 0
+        ? editingTrade.mistakes
+        : (st === 'Random Scalp' ? ['Overtrading', 'Impatient Entry'] : []);
+      setSelectedMistakes(loadedMistakes);
       setLessonLearned(editingTrade.lessonLearned || '');
       setUploadedScreenshot(editingTrade.chartImage || null);
     }
@@ -705,7 +711,7 @@ export const NewTradeModal: React.FC = () => {
                         {s.name}
                       </option>
                     ))}
-                    <option value="Dhan Auto-Sync">Dhan Auto-Sync</option>
+                    <option value="Random Scalp">Random Scalp</option>
                     <option value="Trend Continuation">Trend Continuation</option>
                     <option value="Fibonacci Retracement">Fibonacci Retracement</option>
                     <option value="News-based">News-based</option>
