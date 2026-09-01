@@ -49,7 +49,12 @@ export const ReportsPage: React.FC = () => {
   const setActiveReportTab = (tab: ReportTab) => setReportsSubTab(tab);
 
   // Bad Day Recovery SOS State
-  const [sosLossAmount, setSosLossAmount] = useState<number>(5000);
+  const [sosLossAmount, setSosLossAmount] = useState<number>(12070.80);
+  const [selectedRecoveryIndex, setSelectedRecoveryIndex] = useState<'NIFTY' | 'BANKNIFTY' | 'FINNIFTY' | 'SENSEX' | 'STOCKS'>('NIFTY');
+  const [recoveryLotCount, setRecoveryLotCount] = useState<number>(1);
+  const [isRecoveryPlanSaved, setIsRecoveryPlanSaved] = useState<boolean>(() => {
+    return localStorage.getItem('trade_recovery_plan_active') === 'true';
+  });
   const [sosDailyTarget, setSosDailyTarget] = useState<number>(750);
   const [sosSelectedMistakes, setSosSelectedMistakes] = useState<string[]>(['revenge', 'overtrading']);
   const [isBreathingActive, setIsBreathingActive] = useState<boolean>(false);
@@ -1824,7 +1829,341 @@ export const ReportsPage: React.FC = () => {
 
           </div>
 
-          {/* SECTION 2: HONEST MISTAKE DIAGNOSIS (KAHAN GUKTI HUI?) */}
+          {/* SECTION 2: BIGGEST LOSS DISPLAY & RECOVERY TARGET SELECTOR */}
+          <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#1e2942] pb-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-rose-500" />
+                  Your Loss History & Recovery Targets
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Select your biggest historical loss or today's loss to generate an exact Index-based recovery blueprint:
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 bg-[#16223b] px-3.5 py-1.5 rounded-xl border border-[#23355b]">
+                <span className="text-xs text-slate-400 font-medium">Recovery Goal:</span>
+                <span className="text-sm font-bold text-rose-400 font-mono">₹</span>
+                <input
+                  type="number"
+                  value={sosLossAmount}
+                  onChange={(e) => setSosLossAmount(Math.max(100, Number(e.target.value)))}
+                  className="w-28 bg-transparent text-sm font-black text-rose-400 font-mono focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Quick Loss Preset Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
+              
+              {/* Card 1: All-Time Biggest Day Loss */}
+              <div 
+                onClick={() => setSosLossAmount(Math.abs(worstDay < 0 ? worstDay : 12070.80))}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                  sosLossAmount === Math.abs(worstDay < 0 ? worstDay : 12070.80)
+                    ? 'bg-rose-500/20 border-rose-500 shadow-lg shadow-rose-500/20'
+                    : 'bg-[#16223b] border-[#23355b] hover:border-slate-500'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">💥 All-Time Biggest Loss Day</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300">Worst Day</span>
+                </div>
+                <p className="text-xl font-black text-rose-400 font-mono">
+                  -{formatINR(Math.abs(worstDay < 0 ? worstDay : 12070.80))}
+                </p>
+                <button className="w-full py-1.5 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 text-[11px] font-bold border border-rose-500/40 cursor-pointer">
+                  ⚡ Plan Recovery for This Loss
+                </button>
+              </div>
+
+              {/* Card 2: Today's Loss */}
+              <div 
+                onClick={() => setSosLossAmount(Math.abs(worstDay < 0 ? worstDay : 5000))}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                  sosLossAmount === 5000
+                    ? 'bg-amber-500/20 border-amber-500 shadow-lg shadow-amber-500/20'
+                    : 'bg-[#16223b] border-[#23355b] hover:border-slate-500'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">💔 Standard Target Goal</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-300">₹5,000 Target</span>
+                </div>
+                <p className="text-xl font-black text-amber-400 font-mono">
+                  -₹5,000.00
+                </p>
+                <button className="w-full py-1.5 rounded-xl bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 text-[11px] font-bold border border-amber-500/40 cursor-pointer">
+                  ⚡ Plan for ₹5,000
+                </button>
+              </div>
+
+              {/* Card 3: ₹20,000 Major Drawdown */}
+              <div 
+                onClick={() => setSosLossAmount(20000)}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                  sosLossAmount === 20000
+                    ? 'bg-purple-500/20 border-purple-500 shadow-lg shadow-purple-500/20'
+                    : 'bg-[#16223b] border-[#23355b] hover:border-slate-500'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">🛡️ Full Milestone Reset</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300">₹20,000 Goal</span>
+                </div>
+                <p className="text-xl font-black text-purple-400 font-mono">
+                  -₹20,000.00
+                </p>
+                <button className="w-full py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 text-[11px] font-bold border border-purple-500/40 cursor-pointer">
+                  ⚡ Plan for ₹20,000
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* SECTION 3: INDEX-SPECIFIC SYSTEMATIC RECOVERY BLUEPRINT ENGINE */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#1e2942] pb-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-emerald-400" />
+                  Index-Specific Recovery Blueprint (NIFTY / Bank Nifty / Stocks)
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Choose which index or instrument you will trade to systematically recover {formatINR(sosLossAmount)}:
+                </p>
+              </div>
+
+              {/* Index Selector Tabs */}
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#0e1628] border border-[#1e2942] overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'NIFTY', label: '📈 NIFTY 50', lot: 25 },
+                  { id: 'BANKNIFTY', label: '🏦 BANK NIFTY', lot: 15 },
+                  { id: 'FINNIFTY', label: '⚡ FINNIFTY', lot: 25 },
+                  { id: 'SENSEX', label: '🏛️ SENSEX', lot: 10 },
+                  { id: 'STOCKS', label: '💎 INTRADAY STOCKS', lot: 1 }
+                ].map(idx => (
+                  <button
+                    key={idx.id}
+                    onClick={() => setSelectedRecoveryIndex(idx.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      selectedRecoveryIndex === idx.id
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-[#16223b]'
+                    }`}
+                  >
+                    {idx.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tactical Blueprint Grid for Chosen Index */}
+            {(() => {
+              const indexDetails: Record<string, { name: string; lotSize: number; targetPts: number; slPts: number; rr: string; time: string; setup: string; trap: string; optPremium: number }> = {
+                NIFTY: {
+                  name: 'NIFTY 50',
+                  lotSize: 25,
+                  targetPts: 25,
+                  slPts: 10,
+                  rr: '1:2.5',
+                  time: '9:45 AM - 11:15 AM & 1:45 PM - 3:00 PM',
+                  setup: '15-Min VWAP Pullback & Level Breakout at Key Day High/Low',
+                  trap: 'Do not trade between 11:45 AM - 1:30 PM (lunchtime premium decay chop). Trade ATM options only.',
+                  optPremium: 120
+                },
+                BANKNIFTY: {
+                  name: 'BANK NIFTY',
+                  lotSize: 15,
+                  targetPts: 50,
+                  slPts: 20,
+                  rr: '1:2.5',
+                  time: '9:30 AM - 11:00 AM & 2:00 PM - 3:15 PM',
+                  setup: 'HDFC Bank + ICICI Bank Combined Momentum Direction',
+                  trap: 'Never buy cheap OTM hero-zero calls on expiry afternoon. Strictly trade ATM.',
+                  optPremium: 250
+                },
+                FINNIFTY: {
+                  name: 'FINNIFTY',
+                  lotSize: 25,
+                  targetPts: 30,
+                  slPts: 12,
+                  rr: '1:2.5',
+                  time: '10:00 AM - 11:30 AM',
+                  setup: 'Financial & NBFC Heavyweights Support Confirmation',
+                  trap: 'Avoid chasing 30-point green candle spikes without pullback.',
+                  optPremium: 110
+                },
+                SENSEX: {
+                  name: 'BSE SENSEX',
+                  lotSize: 10,
+                  targetPts: 80,
+                  slPts: 30,
+                  rr: '1:2.6',
+                  time: '9:45 AM - 11:30 AM',
+                  setup: 'Reliance + HDFC Heavyweight Trend Pullback',
+                  trap: 'Always use Limit Orders to avoid wide bid-ask spread slippage.',
+                  optPremium: 220
+                },
+                STOCKS: {
+                  name: 'INTRADAY STOCKS (CASH)',
+                  lotSize: 1,
+                  targetPts: 1.5,
+                  slPts: 0.6,
+                  rr: '1:2.5',
+                  time: '9:30 AM - 10:45 AM',
+                  setup: 'High Relative Volume (RVOL) Gap & Go Stocks (e.g. Tata Motors, Reliance)',
+                  trap: 'Zero theta decay! Ideal for regaining psychological calmness without option expiration stress.',
+                  optPremium: 0
+                }
+              };
+
+              const cur = indexDetails[selectedRecoveryIndex] || indexDetails.NIFTY;
+              const rewardPerTrade = selectedRecoveryIndex === 'STOCKS' ? 750 * recoveryLotCount : cur.targetPts * cur.lotSize * recoveryLotCount;
+              const riskPerTrade = selectedRecoveryIndex === 'STOCKS' ? 300 * recoveryLotCount : cur.slPts * cur.lotSize * recoveryLotCount;
+              const dailyTradesCap = 2;
+              const dailyNetGainExpectation = rewardPerTrade;
+              const totalSessionsNeeded = Math.ceil(sosLossAmount / Math.max(100, dailyNetGainExpectation));
+
+              return (
+                <div className="space-y-6">
+                  {/* Parameter Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
+                      <span className="text-slate-400">Position Size (Fixed)</span>
+                      <p className="text-base font-black text-white font-mono">
+                        {recoveryLotCount} Lot ({selectedRecoveryIndex === 'STOCKS' ? 'Cash Stock' : `${cur.lotSize * recoveryLotCount} Qty`})
+                      </p>
+                      <span className="text-[10px] text-emerald-400 font-bold">100% Capital Protection</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
+                      <span className="text-slate-400">Target Per Trade</span>
+                      <p className="text-base font-black text-emerald-400 font-mono">
+                        +{formatINR(rewardPerTrade)} ({cur.targetPts} {selectedRecoveryIndex === 'STOCKS' ? '%' : 'pts'})
+                      </p>
+                      <span className="text-[10px] text-slate-400 font-bold">R:R = {cur.rr}</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
+                      <span className="text-slate-400">Max Risk (Stop Loss)</span>
+                      <p className="text-base font-black text-rose-400 font-mono">
+                        -{formatINR(riskPerTrade)} ({cur.slPts} {selectedRecoveryIndex === 'STOCKS' ? '%' : 'pts'})
+                      </p>
+                      <span className="text-[10px] text-rose-300 font-bold">Hard System SL</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40 space-y-1">
+                      <span className="text-slate-300">Total Recovery Time</span>
+                      <p className="text-lg font-black text-emerald-400 font-mono">
+                        {totalSessionsNeeded} Trading Sessions
+                      </p>
+                      <span className="text-[10px] text-emerald-300 font-bold">0% Account Stress</span>
+                    </div>
+                  </div>
+
+                  {/* 4-PHASE MILESTONE ROADMAP */}
+                  <div className="p-5 rounded-2xl bg-[#0e1628] border border-[#1e2942] space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-amber-400" />
+                        4-Phase Milestone Recovery Tracker ({cur.name})
+                      </h4>
+                      <span className="text-[11px] text-slate-400 font-mono">Total Goal: {formatINR(sosLossAmount)}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-[#16223b] border border-blue-500/30 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-blue-400">Phase 1 (25%)</span>
+                          <span className="text-[10px] text-slate-400">Day 1 - {Math.ceil(totalSessionsNeeded * 0.25)}</span>
+                        </div>
+                        <p className="text-sm font-black text-white font-mono">+{formatINR(Math.round(sosLossAmount * 0.25))}</p>
+                        <p className="text-[10px] text-slate-400">Rebuilding confidence & breathing calm.</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-[#16223b] border border-cyan-500/30 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-cyan-400">Phase 2 (50%)</span>
+                          <span className="text-[10px] text-slate-400">Day {Math.ceil(totalSessionsNeeded * 0.25) + 1} - {Math.ceil(totalSessionsNeeded * 0.50)}</span>
+                        </div>
+                        <p className="text-sm font-black text-white font-mono">+{formatINR(Math.round(sosLossAmount * 0.50))}</p>
+                        <p className="text-[10px] text-slate-400">Psychological stability restored.</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-[#16223b] border border-purple-500/30 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-purple-400">Phase 3 (75%)</span>
+                          <span className="text-[10px] text-slate-400">Day {Math.ceil(totalSessionsNeeded * 0.50) + 1} - {Math.ceil(totalSessionsNeeded * 0.75)}</span>
+                        </div>
+                        <p className="text-sm font-black text-white font-mono">+{formatINR(Math.round(sosLossAmount * 0.75))}</p>
+                        <p className="text-[10px] text-slate-400">Capital compounding comfortably.</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-emerald-400">Phase 4 (100%)</span>
+                          <span className="text-[10px] text-emerald-300">Final Day {totalSessionsNeeded}</span>
+                        </div>
+                        <p className="text-sm font-black text-emerald-400 font-mono">+{formatINR(sosLossAmount)}</p>
+                        <p className="text-[10px] text-emerald-300">Full capital redemption & ATH!</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* High-Probability Tactical Rules for Selected Index */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+                    <div className="p-3.5 rounded-xl bg-[#16223b] border border-[#23355b] space-y-1">
+                      <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                        <Clock className="w-4 h-4" /> Best Execution Window:
+                      </span>
+                      <p className="text-slate-300">{cur.time}</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-[#16223b] border border-[#23355b] space-y-1">
+                      <span className="font-bold text-blue-400 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" /> Primary High-Winrate Setup:
+                      </span>
+                      <p className="text-slate-300">{cur.setup}</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/30 space-y-1">
+                      <span className="font-bold text-rose-400 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4" /> Deadliest Trap to Avoid:
+                      </span>
+                      <p className="text-rose-200">{cur.trap}</p>
+                    </div>
+                  </div>
+
+                  {/* Activate Blueprint Action */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-blue-900/30 via-indigo-900/20 to-blue-900/30 border border-blue-500/30">
+                    <div>
+                      <h4 className="text-xs font-bold text-white">
+                        Commit to the {cur.name} Recovery Protocol
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        {totalSessionsNeeded} disciplined sessions with 1 lot. No revenge, no heavy sizing.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('trade_recovery_plan_active', 'true');
+                        setIsRecoveryPlanSaved(true);
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 text-white text-xs font-black shadow-lg shadow-emerald-600/30 transition-all cursor-pointer shrink-0"
+                    >
+                      {isRecoveryPlanSaved ? '✅ Recovery Blueprint Activated!' : `🚀 Activate ${cur.name} Recovery Plan`}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* SECTION 4: HONEST MISTAKE DIAGNOSIS (KAHAN GUKTI HUI?) */}
           <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -1877,104 +2216,6 @@ export const ReportsPage: React.FC = () => {
                 );
               })}
             </div>
-          </div>
-
-          {/* SECTION 3: SYSTEMATIC CAPITAL RECOVERY CALCULATOR (ZERO REVENGE FORMULA) */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#1e2942] pb-4">
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-white light:text-slate-900 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-emerald-400" />
-                  The "Zero-Revenge" Systematic Recovery Math
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  See how simple, disciplined small daily profits safely recover your loss without any account risk:
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-2 bg-[#16223b] px-3.5 py-1.5 rounded-xl border border-[#23355b]">
-                <span className="text-xs text-slate-400 font-medium">Loss Amount:</span>
-                <span className="text-sm font-bold text-rose-400 font-mono">₹</span>
-                <input
-                  type="number"
-                  value={sosLossAmount}
-                  onChange={(e) => setSosLossAmount(Math.max(100, Number(e.target.value)))}
-                  className="w-24 bg-transparent text-sm font-black text-rose-400 font-mono focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Recovery Comparison Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              
-              {/* Box 1: The Amateur Trap (What Destroys Accounts) */}
-              <div className="p-5 rounded-2xl bg-rose-950/20 border border-rose-500/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                    ❌ The Amateur Mistake (Revenge Trap)
-                  </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded border border-rose-500/30">
-                    98% FAIL
-                  </span>
-                </div>
-                <div className="space-y-2 text-xs text-slate-300">
-                  <p>• "Kal 5 ya 10 lot lekar ek hi trade me poora {formatINR(sosLossAmount)} wapis nikalunga."</p>
-                  <p>• 1 trade me 30-40 point ka stop loss lagaunga bina analysis ke.</p>
-                  <p className="text-rose-400 font-bold pt-1">
-                    ⚠️ Reality: Market thoda sa bhi against gaya to bacha hua capital bhi 0 ho jayega aur depression badh jayega.
-                  </p>
-                </div>
-              </div>
-
-              {/* Box 2: The Professional Institutional Recovery */}
-              <div className="p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    ✅ The Pro Recovery Protocol (Safe Math)
-                  </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
-                    94% SUCCESS
-                  </span>
-                </div>
-                
-                {/* Math output */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Daily Target (1 Lot, 1:2 R:R):</span>
-                    <span className="font-bold text-emerald-400 font-mono">₹{sosDailyTarget} / day</span>
-                  </div>
-
-                  <input
-                    type="range"
-                    min="300"
-                    max="2500"
-                    step="50"
-                    value={sosDailyTarget}
-                    onChange={(e) => setSosDailyTarget(Number(e.target.value))}
-                    className="w-full accent-emerald-500 cursor-pointer"
-                  />
-
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
-                    <div>
-                      <p className="text-[11px] text-slate-400">Total Recovery Time:</p>
-                      <p className="text-lg font-black text-emerald-400 font-mono">
-                        {Math.ceil(sosLossAmount / sosDailyTarget)} Trading Sessions
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[11px] text-slate-400">Capital Stress:</p>
-                      <p className="text-sm font-bold text-emerald-300">0% (Safe & Calm)</p>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-
-            <p className="text-xs text-center text-slate-400">
-              💡 Sirf <strong>{Math.ceil(sosLossAmount / sosDailyTarget)} din</strong> discipline se 1-lot trade karke bina kisi tension ke aapka pura {formatINR(sosLossAmount)} recover ho jayega!
-            </p>
           </div>
 
           {/* SECTION 4: 5 GOLDEN RULES FOR TOMORROW MORNING */}
