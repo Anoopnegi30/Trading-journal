@@ -15,7 +15,7 @@ import {
 
 export const CalendarPage: React.FC = () => {
   const { trades, setSelectedTrade } = useTradeContext();
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 7, 1)); // August 2026 default
+  const [currentDate, setCurrentDate] = useState(new Date()); // Dynamic current live month default
   const [selectedDayTrades, setSelectedDayTrades] = useState<{ date: string; trades: Trade[] } | null>(null);
 
   const year = currentDate.getFullYear();
@@ -27,6 +27,10 @@ export const CalendarPage: React.FC = () => {
 
   const nextMonth = () => {
     setCurrentDate(new Date(year, month + 1, 1));
+  };
+
+  const resetToToday = () => {
+    setCurrentDate(new Date());
   };
 
   // Group trades by date string YYYY-MM-DD
@@ -78,20 +82,26 @@ export const CalendarPage: React.FC = () => {
         </div>
 
         {/* Month Navigator */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={resetToToday}
+            className="px-3 py-1.5 rounded-xl bg-[#16223b] hover:bg-[#23355b] text-blue-400 hover:text-blue-300 text-xs font-bold border border-[#23355b] transition-all cursor-pointer"
+          >
+            Today
+          </button>
           <div className="flex items-center bg-[#16223b] light:bg-slate-100 p-1 rounded-xl border border-[#23355b] light:border-slate-200">
             <button
               onClick={prevMonth}
-              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#202f50] transition-colors"
+              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#202f50] transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="px-4 text-xs font-bold text-white light:text-slate-900">
+            <span className="px-4 text-xs font-bold text-white light:text-slate-900 min-w-[130px] text-center">
               {monthName}
             </span>
             <button
               onClick={nextMonth}
-              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#202f50] transition-colors"
+              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#202f50] transition-colors cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -165,6 +175,9 @@ export const CalendarPage: React.FC = () => {
             const isLoss = dayNet < 0;
             const isNoTradeDay = dayTrades.some(t => t.isNoTradeDay);
 
+            const today = new Date();
+            const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === dayNum;
+
             return (
               <div
                 key={`day-${dayNum}`}
@@ -174,6 +187,8 @@ export const CalendarPage: React.FC = () => {
                   }
                 }}
                 className={`h-24 sm:h-28 p-2 rounded-2xl border transition-all flex flex-col justify-between relative group ${
+                  isToday ? 'ring-2 ring-blue-500/60 shadow-lg shadow-blue-500/20 ' : ''
+                }${
                   hasTrades
                     ? isProfit
                       ? 'bg-emerald-950/20 hover:bg-emerald-900/30 border-emerald-500/30 cursor-pointer shadow-lg shadow-emerald-950/20'
@@ -185,10 +200,15 @@ export const CalendarPage: React.FC = () => {
               >
                 {/* Day number */}
                 <div className="flex items-center justify-between">
-                  <span className={`text-xs font-bold ${
-                    hasTrades ? 'text-white' : 'text-slate-500'
+                  <span className={`text-xs font-bold flex items-center gap-1 ${
+                    isToday ? 'text-blue-400 font-black' : hasTrades ? 'text-white' : 'text-slate-500'
                   }`}>
                     {dayNum}
+                    {isToday && (
+                      <span className="px-1 py-0.2 rounded text-[8px] bg-blue-500/30 text-blue-300 font-black border border-blue-500/40">
+                        TODAY
+                      </span>
+                    )}
                   </span>
                   {hasTrades && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-[#0d1527] text-slate-300 border border-[#23355b]">
