@@ -1925,32 +1925,34 @@ export const ReportsPage: React.FC = () => {
 
           {/* SECTION 3: INDEX-SPECIFIC SYSTEMATIC RECOVERY BLUEPRINT ENGINE */}
           <div className="p-6 sm:p-8 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#1e2942] pb-4">
+            
+            {/* Header with Title & Index Tabs */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#1e2942] pb-5">
               <div>
-                <h3 className="text-base sm:text-lg font-black text-white light:text-slate-900 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-emerald-400" />
-                  Index-Specific Recovery Blueprint (NIFTY / Bank Nifty / Stocks)
+                <h3 className="text-lg sm:text-xl font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <Target className="w-6 h-6 text-emerald-400" />
+                  Index-Specific Recovery Plan (Aasan Hindi Mein)
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Choose which index or instrument you will trade to systematically recover {formatINR(sosLossAmount)}:
+                <p className="text-xs text-slate-300 light:text-slate-600 mt-1">
+                  Chuno ki aapko <strong>NIFTY, BANK NIFTY ya STOCKS</strong> me se kisse apna loss systematically recover karna hai:
                 </p>
               </div>
 
               {/* Index Selector Tabs */}
-              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#0e1628] border border-[#1e2942] overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#0e1628] border border-[#1e2942] overflow-x-auto no-scrollbar">
                 {[
-                  { id: 'NIFTY', label: '📈 NIFTY 50', lot: 25 },
-                  { id: 'BANKNIFTY', label: '🏦 BANK NIFTY', lot: 15 },
-                  { id: 'FINNIFTY', label: '⚡ FINNIFTY', lot: 25 },
-                  { id: 'SENSEX', label: '🏛️ SENSEX', lot: 10 },
-                  { id: 'STOCKS', label: '💎 INTRADAY STOCKS', lot: 1 }
+                  { id: 'NIFTY', label: '📈 NIFTY 50' },
+                  { id: 'BANKNIFTY', label: '🏦 BANK NIFTY' },
+                  { id: 'FINNIFTY', label: '⚡ FINNIFTY' },
+                  { id: 'SENSEX', label: '🏛️ SENSEX' },
+                  { id: 'STOCKS', label: '💎 INTRADAY STOCKS' }
                 ].map(idx => (
                   <button
                     key={idx.id}
                     onClick={() => setSelectedRecoveryIndex(idx.id as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                       selectedRecoveryIndex === idx.id
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-[#16223b]'
                     }`}
                   >
@@ -1962,153 +1964,238 @@ export const ReportsPage: React.FC = () => {
 
             {/* Tactical Blueprint Grid for Chosen Index */}
             {(() => {
-              const indexDetails: Record<string, { name: string; lotSize: number; targetPts: number; slPts: number; rr: string; time: string; setup: string; trap: string; optPremium: number }> = {
+              // Exact Lot Sizes & Configurations
+              const indexConfigMap: Record<string, { name: string; defaultLotQty: number; targetPts: number; slPts: number; timeHindi: string; setupHindi: string; trapHindi: string }> = {
                 NIFTY: {
                   name: 'NIFTY 50',
-                  lotSize: 25,
-                  targetPts: 25,
-                  slPts: 10,
-                  rr: '1:2.5',
-                  time: '9:45 AM - 11:15 AM & 1:45 PM - 3:00 PM',
-                  setup: '15-Min VWAP Pullback & Level Breakout at Key Day High/Low',
-                  trap: 'Do not trade between 11:45 AM - 1:30 PM (lunchtime premium decay chop). Trade ATM options only.',
-                  optPremium: 120
+                  defaultLotQty: 25, // 25 Qty per lot (or 75)
+                  targetPts: 25,     // 25 Points Target
+                  slPts: 10,         // 10 Points Stop-Loss
+                  timeHindi: 'Subah 9:45 AM se 11:15 AM (Ya Dupahar 1:45 PM se 3:00 PM)',
+                  setupHindi: '15-Minute Chart par Day High/Low Breakout ya VWAP Support Bounce',
+                  trapHindi: '11:45 AM se 1:30 PM ke beech market sideways rehta hai, tab trade mat lena.'
                 },
                 BANKNIFTY: {
                   name: 'BANK NIFTY',
-                  lotSize: 15,
-                  targetPts: 50,
-                  slPts: 20,
-                  rr: '1:2.5',
-                  time: '9:30 AM - 11:00 AM & 2:00 PM - 3:15 PM',
-                  setup: 'HDFC Bank + ICICI Bank Combined Momentum Direction',
-                  trap: 'Never buy cheap OTM hero-zero calls on expiry afternoon. Strictly trade ATM.',
-                  optPremium: 250
+                  defaultLotQty: 15, // 15 Qty per lot
+                  targetPts: 50,     // 50 Points Target
+                  slPts: 20,         // 20 Points Stop-Loss
+                  timeHindi: 'Subah 9:30 AM se 11:00 AM (Jab Banking leaders move karte hain)',
+                  setupHindi: 'HDFC Bank & ICICI Bank dono ek hi direction me move karein tab ATM Call/Put',
+                  trapHindi: 'Expiry wale din saste OTM (Hero-Zero) option mat khareedna, sirf ATM trade karna.'
                 },
                 FINNIFTY: {
                   name: 'FINNIFTY',
-                  lotSize: 25,
+                  defaultLotQty: 25,
                   targetPts: 30,
                   slPts: 12,
-                  rr: '1:2.5',
-                  time: '10:00 AM - 11:30 AM',
-                  setup: 'Financial & NBFC Heavyweights Support Confirmation',
-                  trap: 'Avoid chasing 30-point green candle spikes without pullback.',
-                  optPremium: 110
+                  timeHindi: 'Subah 10:00 AM se 11:30 AM',
+                  setupHindi: 'Financial & NBFC Heavyweights Support Confirmation',
+                  trapHindi: 'Badi candle bhaagte waqt beech me jump mat karna, pullback ka wait karna.'
                 },
                 SENSEX: {
                   name: 'BSE SENSEX',
-                  lotSize: 10,
+                  defaultLotQty: 10,
                   targetPts: 80,
                   slPts: 30,
-                  rr: '1:2.6',
-                  time: '9:45 AM - 11:30 AM',
-                  setup: 'Reliance + HDFC Heavyweight Trend Pullback',
-                  trap: 'Always use Limit Orders to avoid wide bid-ask spread slippage.',
-                  optPremium: 220
+                  timeHindi: 'Subah 9:45 AM se 11:30 AM',
+                  setupHindi: 'Reliance + HDFC Support Level Bounce',
+                  trapHindi: 'Hamesha Limit Order lagakar buy karein, Market order se door rahein.'
                 },
                 STOCKS: {
                   name: 'INTRADAY STOCKS (CASH)',
-                  lotSize: 1,
+                  defaultLotQty: 1,
                   targetPts: 1.5,
                   slPts: 0.6,
-                  rr: '1:2.5',
-                  time: '9:30 AM - 10:45 AM',
-                  setup: 'High Relative Volume (RVOL) Gap & Go Stocks (e.g. Tata Motors, Reliance)',
-                  trap: 'Zero theta decay! Ideal for regaining psychological calmness without option expiration stress.',
-                  optPremium: 0
+                  timeHindi: 'Subah 9:30 AM se 10:45 AM',
+                  setupHindi: 'Top Gainers/Losers me 1.5% Target & 0.6% Stop-Loss',
+                  trapHindi: 'Zero Theta Decay! Sabse safe aur calm tareeka recovery karne ka.'
                 }
               };
 
-              const cur = indexDetails[selectedRecoveryIndex] || indexDetails.NIFTY;
-              const rewardPerTrade = selectedRecoveryIndex === 'STOCKS' ? 750 * recoveryLotCount : cur.targetPts * cur.lotSize * recoveryLotCount;
-              const riskPerTrade = selectedRecoveryIndex === 'STOCKS' ? 300 * recoveryLotCount : cur.slPts * cur.lotSize * recoveryLotCount;
+              const currentConfig = indexConfigMap[selectedRecoveryIndex] || indexConfigMap.NIFTY;
+              const totalQuantity = selectedRecoveryIndex === 'STOCKS' ? 100 * recoveryLotCount : currentConfig.defaultLotQty * recoveryLotCount;
+              
+              const rewardPerTrade = selectedRecoveryIndex === 'STOCKS' ? 750 * recoveryLotCount : currentConfig.targetPts * totalQuantity;
+              const riskPerTrade = selectedRecoveryIndex === 'STOCKS' ? 300 * recoveryLotCount : currentConfig.slPts * totalQuantity;
+              
               const dailyTradesCap = 2;
-              const dailyNetGainExpectation = rewardPerTrade;
-              const totalSessionsNeeded = Math.ceil(sosLossAmount / Math.max(100, dailyNetGainExpectation));
+              const expectedDailyGain = rewardPerTrade;
+              const totalSessionsNeeded = Math.ceil(sosLossAmount / Math.max(100, expectedDailyGain));
 
               return (
                 <div className="space-y-6">
-                  {/* Parameter Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                    <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-                      <span className="text-slate-400">Position Size (Fixed)</span>
-                      <p className="text-base font-black text-white font-mono">
-                        {recoveryLotCount} Lot ({selectedRecoveryIndex === 'STOCKS' ? 'Cash Stock' : `${cur.lotSize * recoveryLotCount} Qty`})
+                  
+                  {/* QUANTITY & LOT SELECTOR CONTROLS */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#16223b] border border-[#23355b] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aapka Position Size (Lots & Quantity):</span>
+                      <p className="text-sm font-black text-white">
+                        {currentConfig.name} ➡️ <span className="text-emerald-400">{recoveryLotCount} Lot = {totalQuantity} Quantity</span>
                       </p>
-                      <span className="text-[10px] text-emerald-400 font-bold">100% Capital Protection</span>
+                      <p className="text-[11px] text-slate-400">
+                        {recoveryLotCount === 1 ? '✅ 1 Lot se trade karna sabse safe hai jab tak confidence wapis na aaye.' : '⚠️ 1 Lot se zyada lot lene par risk badh jata hai.'}
+                      </p>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-                      <span className="text-slate-400">Target Per Trade</span>
-                      <p className="text-base font-black text-emerald-400 font-mono">
-                        +{formatINR(rewardPerTrade)} ({cur.targetPts} {selectedRecoveryIndex === 'STOCKS' ? '%' : 'pts'})
+                    <div className="flex items-center gap-3 bg-[#0e1628] p-1.5 rounded-xl border border-[#1e2942]">
+                      <button
+                        onClick={() => setRecoveryLotCount(Math.max(1, recoveryLotCount - 1))}
+                        className="w-8 h-8 rounded-lg bg-[#16223b] hover:bg-[#23355b] text-white font-black text-sm flex items-center justify-center cursor-pointer transition-all"
+                      >
+                        -
+                      </button>
+                      <div className="px-3 text-center">
+                        <span className="text-sm font-black text-white font-mono">{recoveryLotCount} Lot</span>
+                        <p className="text-[9px] text-slate-400 font-mono">({totalQuantity} Qty)</p>
+                      </div>
+                      <button
+                        onClick={() => setRecoveryLotCount(Math.min(5, recoveryLotCount + 1))}
+                        className="w-8 h-8 rounded-lg bg-[#16223b] hover:bg-[#23355b] text-white font-black text-sm flex items-center justify-center cursor-pointer transition-all"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 4 SIMPLE METRIC CARDS IN EASY HINDI */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+                    
+                    {/* Card 1: Quantity */}
+                    <div className="p-4 rounded-2xl bg-[#0e1628] border border-[#1e2942] space-y-1">
+                      <span className="text-slate-400 font-bold">1. Kitni Quantity Leni Hai:</span>
+                      <p className="text-lg font-black text-white font-mono">
+                        {totalQuantity} Quantity
                       </p>
-                      <span className="text-[10px] text-slate-400 font-bold">R:R = {cur.rr}</span>
+                      <span className="text-[11px] text-blue-400 font-medium">({recoveryLotCount} Lot Fixed Size)</span>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1">
-                      <span className="text-slate-400">Max Risk (Stop Loss)</span>
-                      <p className="text-base font-black text-rose-400 font-mono">
-                        -{formatINR(riskPerTrade)} ({cur.slPts} {selectedRecoveryIndex === 'STOCKS' ? '%' : 'pts'})
-                      </p>
-                      <span className="text-[10px] text-rose-300 font-bold">Hard System SL</span>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40 space-y-1">
-                      <span className="text-slate-300">Total Recovery Time</span>
+                    {/* Card 2: Target */}
+                    <div className="p-4 rounded-2xl bg-[#0e1628] border border-[#1e2942] space-y-1">
+                      <span className="text-slate-400 font-bold">2. Target Kitna Point Lena Hai:</span>
                       <p className="text-lg font-black text-emerald-400 font-mono">
-                        {totalSessionsNeeded} Trading Sessions
+                        +{formatINR(rewardPerTrade)}
                       </p>
-                      <span className="text-[10px] text-emerald-300 font-bold">0% Account Stress</span>
+                      <span className="text-[11px] text-emerald-300 font-medium">
+                        Option me +{currentConfig.targetPts} {selectedRecoveryIndex === 'STOCKS' ? '%' : 'points'}
+                      </span>
+                    </div>
+
+                    {/* Card 3: Stop-Loss */}
+                    <div className="p-4 rounded-2xl bg-[#0e1628] border border-[#1e2942] space-y-1">
+                      <span className="text-slate-400 font-bold">3. Stop-Loss (Max Risk):</span>
+                      <p className="text-lg font-black text-rose-400 font-mono">
+                        -{formatINR(riskPerTrade)}
+                      </p>
+                      <span className="text-[11px] text-rose-300 font-medium">
+                        Option me sirf -{currentConfig.slPts} {selectedRecoveryIndex === 'STOCKS' ? '%' : 'points'}
+                      </span>
+                    </div>
+
+                    {/* Card 4: Total Recovery Sessions */}
+                    <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-500/40 space-y-1">
+                      <span className="text-slate-300 font-bold">4. Poora Loss Kab Recover Hoga:</span>
+                      <p className="text-lg font-black text-emerald-400 font-mono">
+                        ~{totalSessionsNeeded} Trading Days
+                      </p>
+                      <span className="text-[11px] text-emerald-300 font-medium">0% Tension & Safe Math</span>
+                    </div>
+
+                  </div>
+
+                  {/* STEP-BY-STEP DAILY PRACTICAL TRADING GUIDE IN SIMPLE HINDI */}
+                  <div className="p-5 sm:p-6 rounded-2xl bg-[#0e1628] border border-[#1e2942] space-y-4">
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#1e2942] pb-3">
+                      <BookOpen className="w-4 h-4 text-blue-400" />
+                      Kal Subah Market Mein Exactly Kya Karna Hai (Step-by-Step Guide):
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
+                      
+                      <div className="p-3.5 rounded-xl bg-[#16223b] border border-[#23355b] space-y-1">
+                        <p className="font-bold text-amber-400">
+                          ⏱️ Step 1: Subah 9:15 se 9:45 AM tak Shanti se Baitho
+                        </p>
+                        <p className="text-slate-300 leading-relaxed">
+                          Pehle 30 minute market me bahot fast candles banti hain. Koyi trade mat lo, market ko apna High aur Low level banane do.
+                        </p>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-[#16223b] border border-[#23355b] space-y-1">
+                        <p className="font-bold text-blue-400">
+                          🎯 Step 2: 9:45 AM ke Baad 1 ATM Strike Price Chuno
+                        </p>
+                        <p className="text-slate-300 leading-relaxed">
+                          Jab 15-minute chart par clean breakout ya support bounce mile, tab sirf <strong>1 Lot ATM Option (jo ₹100-₹150 ka ho)</strong> buy karo.
+                        </p>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-[#16223b] border border-[#23355b] space-y-1">
+                        <p className="font-bold text-purple-400">
+                          🛡️ Step 3: Buy Karte Hi Turant Terminal Me SL Lagao
+                        </p>
+                        <p className="text-slate-300 leading-relaxed">
+                          Order buy hote hi terminal me <strong>{currentConfig.slPts} Point ka Stop-Loss order</strong> place kar do. Agar market reverse hua to sirf <strong>₹{riskPerTrade}</strong> jayega, isse zyada loss kabhi nahi hoga.
+                        </p>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-[#16223b] border border-[#23355b] space-y-1">
+                        <p className="font-bold text-emerald-400">
+                          💰 Step 4: 20-25 Point Milte Hi Profit Book & Screen Close
+                        </p>
+                        <p className="text-slate-300 leading-relaxed">
+                          Jaise hi aapke option me <strong>+{currentConfig.targetPts} point</strong> aayein (+₹{rewardPerTrade}), turant profit book karo. Din me maximum 2 trades ke baad laptop band kar do!
+                        </p>
+                      </div>
+
                     </div>
                   </div>
 
                   {/* 4-PHASE MILESTONE ROADMAP */}
-                  <div className="p-5 rounded-2xl bg-[#0e1628] border border-[#1e2942] space-y-4">
+                  <div className="p-5 rounded-2xl bg-[#0e1628] border border-[#1e2942] space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
                         <Trophy className="w-4 h-4 text-amber-400" />
-                        4-Phase Milestone Recovery Tracker ({cur.name})
+                        Aapke {formatINR(sosLossAmount)} Loss Ka Recovery Milestone:
                       </h4>
-                      <span className="text-[11px] text-slate-400 font-mono">Total Goal: {formatINR(sosLossAmount)}</span>
+                      <span className="text-[11px] text-slate-400 font-mono">Total Target: {formatINR(sosLossAmount)}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                       <div className="p-3 rounded-xl bg-[#16223b] border border-blue-500/30 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-blue-400">Phase 1 (25%)</span>
-                          <span className="text-[10px] text-slate-400">Day 1 - {Math.ceil(totalSessionsNeeded * 0.25)}</span>
+                          <span className="font-bold text-blue-400">Step 1 (25%)</span>
+                          <span className="text-[10px] text-slate-400">Pehle 5 Din</span>
                         </div>
                         <p className="text-sm font-black text-white font-mono">+{formatINR(Math.round(sosLossAmount * 0.25))}</p>
-                        <p className="text-[10px] text-slate-400">Rebuilding confidence & breathing calm.</p>
+                        <p className="text-[10px] text-slate-400">Confidence wapis aayega aur breathing normal hogi.</p>
                       </div>
 
                       <div className="p-3 rounded-xl bg-[#16223b] border border-cyan-500/30 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-cyan-400">Phase 2 (50%)</span>
-                          <span className="text-[10px] text-slate-400">Day {Math.ceil(totalSessionsNeeded * 0.25) + 1} - {Math.ceil(totalSessionsNeeded * 0.50)}</span>
+                          <span className="font-bold text-cyan-400">Step 2 (50%)</span>
+                          <span className="text-[10px] text-slate-400">Agle 5 Din</span>
                         </div>
                         <p className="text-sm font-black text-white font-mono">+{formatINR(Math.round(sosLossAmount * 0.50))}</p>
-                        <p className="text-[10px] text-slate-400">Psychological stability restored.</p>
+                        <p className="text-[10px] text-slate-400">Aadha loss cover ho chuka hoga.</p>
                       </div>
 
                       <div className="p-3 rounded-xl bg-[#16223b] border border-purple-500/30 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-purple-400">Phase 3 (75%)</span>
-                          <span className="text-[10px] text-slate-400">Day {Math.ceil(totalSessionsNeeded * 0.50) + 1} - {Math.ceil(totalSessionsNeeded * 0.75)}</span>
+                          <span className="font-bold text-purple-400">Step 3 (75%)</span>
+                          <span className="text-[10px] text-slate-400">Agle 5 Din</span>
                         </div>
                         <p className="text-sm font-black text-white font-mono">+{formatINR(Math.round(sosLossAmount * 0.75))}</p>
-                        <p className="text-[10px] text-slate-400">Capital compounding comfortably.</p>
+                        <p className="text-[10px] text-slate-400">Trading capital secure aur positive hoga.</p>
                       </div>
 
                       <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-emerald-400">Phase 4 (100%)</span>
-                          <span className="text-[10px] text-emerald-300">Final Day {totalSessionsNeeded}</span>
+                          <span className="font-bold text-emerald-400">Step 4 (100%)</span>
+                          <span className="text-[10px] text-emerald-300">Final Step</span>
                         </div>
                         <p className="text-sm font-black text-emerald-400 font-mono">+{formatINR(sosLossAmount)}</p>
-                        <p className="text-[10px] text-emerald-300">Full capital redemption & ATH!</p>
+                        <p className="text-[10px] text-emerald-300">Poora Loss Zero & Account New High par!</p>
                       </div>
                     </div>
                   </div>
@@ -2117,23 +2204,23 @@ export const ReportsPage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
                     <div className="p-3.5 rounded-xl bg-[#16223b] border border-[#23355b] space-y-1">
                       <span className="font-bold text-amber-400 flex items-center gap-1.5">
-                        <Clock className="w-4 h-4" /> Best Execution Window:
+                        <Clock className="w-4 h-4" /> Trade Lene Ka Sahi Time:
                       </span>
-                      <p className="text-slate-300">{cur.time}</p>
+                      <p className="text-slate-300">{currentConfig.timeHindi}</p>
                     </div>
 
                     <div className="p-3.5 rounded-xl bg-[#16223b] border border-[#23355b] space-y-1">
                       <span className="font-bold text-blue-400 flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4" /> Primary High-Winrate Setup:
+                        <Sparkles className="w-4 h-4" /> Setup (Kahan Entry Leni Hai):
                       </span>
-                      <p className="text-slate-300">{cur.setup}</p>
+                      <p className="text-slate-300">{currentConfig.setupHindi}</p>
                     </div>
 
                     <div className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/30 space-y-1">
                       <span className="font-bold text-rose-400 flex items-center gap-1.5">
-                        <AlertTriangle className="w-4 h-4" /> Deadliest Trap to Avoid:
+                        <AlertTriangle className="w-4 h-4" /> Sabse Badi Galti Jo Nahi Karni:
                       </span>
-                      <p className="text-rose-200">{cur.trap}</p>
+                      <p className="text-rose-200">{currentConfig.trapHindi}</p>
                     </div>
                   </div>
 
@@ -2141,10 +2228,10 @@ export const ReportsPage: React.FC = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-blue-900/30 via-indigo-900/20 to-blue-900/30 border border-blue-500/30">
                     <div>
                       <h4 className="text-xs font-bold text-white">
-                        Commit to the {cur.name} Recovery Protocol
+                        {currentConfig.name} Ka Recovery Plan Commit Karein
                       </h4>
                       <p className="text-[11px] text-slate-400">
-                        {totalSessionsNeeded} disciplined sessions with 1 lot. No revenge, no heavy sizing.
+                        {totalSessionsNeeded} din strictly 1 lot se trade karenge, koyi revenge ya heavy lot nahi lenge.
                       </p>
                     </div>
 
@@ -2155,9 +2242,10 @@ export const ReportsPage: React.FC = () => {
                       }}
                       className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 text-white text-xs font-black shadow-lg shadow-emerald-600/30 transition-all cursor-pointer shrink-0"
                     >
-                      {isRecoveryPlanSaved ? '✅ Recovery Blueprint Activated!' : `🚀 Activate ${cur.name} Recovery Plan`}
+                      {isRecoveryPlanSaved ? '✅ Plan Active Hai!' : `🚀 Activate ${currentConfig.name} Plan`}
                     </button>
                   </div>
+
                 </div>
               );
             })()}
