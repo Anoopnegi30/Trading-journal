@@ -19,4 +19,10 @@ CREATE TABLE IF NOT EXISTS checklist (
   data TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_trades_date ON trades(created_at);

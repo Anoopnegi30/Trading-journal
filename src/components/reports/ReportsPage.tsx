@@ -27,15 +27,57 @@ import {
   BookOpen,
   Layers,
   Sparkles,
-  Zap
+  Zap,
+  AlertOctagon,
+  HeartPulse,
+  Lock,
+  RotateCcw,
+  ShieldAlert,
+  Flame,
+  CheckSquare,
+  Compass,
+  ArrowRight,
+  Info
 } from 'lucide-react';
 import { formatINR, calculateDashboardStats, getMistakesBreakdown } from '../../utils/calculations';
 
-type ReportTab = 'Performance' | 'Time of Day' | 'Psychology' | 'Risk' | 'Journal';
+type ReportTab = 'Performance' | 'Time of Day' | 'Psychology' | 'Risk' | 'Journal' | 'Bad Day Reset SOS';
 
 export const ReportsPage: React.FC = () => {
   const { trades, dateFilter, setDateFilter, marketFilter, setMarketFilter, exportCsv } = useTradeContext();
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('Performance');
+
+  // Bad Day Recovery SOS State
+  const [sosLossAmount, setSosLossAmount] = useState<number>(5000);
+  const [sosDailyTarget, setSosDailyTarget] = useState<number>(750);
+  const [sosSelectedMistakes, setSosSelectedMistakes] = useState<string[]>(['revenge', 'overtrading']);
+  const [isBreathingActive, setIsBreathingActive] = useState<boolean>(false);
+  const [breathingPhase, setBreathingPhase] = useState<'Inhale' | 'Hold' | 'Exhale'>('Inhale');
+  const [breathingCountdown, setBreathingCountdown] = useState<number>(60);
+  const [isSosContractLocked, setIsSosContractLocked] = useState<boolean>(false);
+  const [contractAccept1, setContractAccept1] = useState<boolean>(false);
+  const [contractAccept2, setContractAccept2] = useState<boolean>(false);
+  const [contractAccept3, setContractAccept3] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    let timer: any;
+    if (isBreathingActive && breathingCountdown > 0) {
+      timer = setInterval(() => {
+        setBreathingCountdown(prev => {
+          if (prev <= 1) {
+            setIsBreathingActive(false);
+            return 60;
+          }
+          const mod = prev % 12;
+          if (mod >= 8) setBreathingPhase('Inhale');
+          else if (mod >= 4) setBreathingPhase('Hold');
+          else setBreathingPhase('Exhale');
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isBreathingActive, breathingCountdown]);
 
   const validTrades = trades.filter(t => !t.isNoTradeDay);
   const stats = calculateDashboardStats(trades);
@@ -581,6 +623,22 @@ export const ReportsPage: React.FC = () => {
         >
           <BookOpen className="w-4 h-4" />
           <span>Journal</span>
+        </button>
+
+        {/* 🚨 Bad Day Recovery SOS Button */}
+        <button
+          onClick={() => setActiveReportTab('Bad Day Reset SOS')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer relative shrink-0 ${
+            activeReportTab === 'Bad Day Reset SOS'
+              ? 'bg-gradient-to-r from-rose-600 via-red-600 to-amber-600 text-white shadow-lg shadow-rose-600/40 border border-rose-400 animate-pulse'
+              : 'bg-gradient-to-r from-rose-500/20 via-red-500/15 to-amber-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30 hover:border-rose-400'
+          }`}
+        >
+          <AlertOctagon className="w-4 h-4 text-rose-400 animate-bounce" />
+          <span>🚨 Bad Day Recovery SOS</span>
+          <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-950/80 text-rose-300 border border-rose-500/40 font-mono font-black">
+            RESET
+          </span>
         </button>
       </div>
 
@@ -1664,58 +1722,406 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: JOURNAL */}
+      {/* TAB 5: 🚨 BAD DAY RECOVERY & RESET SOS PROTOCOL */}
       {/* ========================================================================= */}
-      {activeReportTab === 'Journal' && (
-        <div className="space-y-4">
-          {sortedDays.length === 0 ? (
-            <div className="p-12 text-center bg-[#111a2e] rounded-3xl border border-[#1e2942] text-slate-400">
-              No journal entries recorded for this period.
-            </div>
-          ) : (
-            sortedDays.map(([date, data]) => {
-              const dayTrades = validTrades.filter(t => t.date === date);
-              return (
-                <div key={date} className="p-5 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center font-bold text-xs">
-                        {date.split('-')[2]}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-white light:text-slate-900 text-sm">{date}</h4>
-                        <p className="text-xs text-slate-400">{dayTrades.length} trade{dayTrades.length > 1 ? 's' : ''} executed</p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <span className={`text-base font-black font-mono ${data.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {data.pnl >= 0 ? '+' : ''}{formatINR(data.pnl)}
-                      </span>
-                      <p className="text-[11px] text-slate-400">Charges: {formatINR(data.charges)}</p>
-                    </div>
+      {activeReportTab === 'Bad Day Reset SOS' && (
+        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          
+          {/* SECTION 1: EMERGENCY HALT & PSYCHOLOGICAL DE-ESCALATION HERO */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-rose-950/80 via-[#181124] to-[#111a2e] border-2 border-rose-500/40 shadow-2xl relative overflow-hidden space-y-6">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-rose-500/20 pb-5">
+              <div className="flex items-center gap-3.5">
+                <div className="w-14 h-14 rounded-2xl bg-rose-600/30 text-rose-400 border border-rose-500/40 flex items-center justify-center shadow-lg shadow-rose-600/30 shrink-0 animate-pulse">
+                  <ShieldAlert className="w-8 h-8 text-rose-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white uppercase tracking-wider">
+                      EMERGENCY PROTOCOL
+                    </span>
+                    <span className="text-xs text-rose-300 font-bold">CIRCUIT BREAKER ACTIVATED</span>
                   </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white mt-1 tracking-tight">
+                    🛑 Step 1: Close Your Broker Terminal Right Now
+                  </h2>
+                </div>
+              </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#1e2942]">
-                    {dayTrades.map(dt => (
-                      <div key={dt.id} className="p-3 rounded-2xl bg-[#16223b] light:bg-slate-50 border border-[#23355b] flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-bold text-white light:text-slate-900">{dt.symbol}</p>
-                          <p className="text-[11px] text-slate-400">{dt.strategy} • Qty: {dt.quantity}</p>
-                        </div>
-                        <div className="text-right font-mono font-bold">
-                          <p className={dt.netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                            {dt.netPnl >= 0 ? '+' : ''}{formatINR(dt.netPnl)}
-                          </p>
-                          <p className="text-[10px] text-slate-500">{dt.outcome}</p>
-                        </div>
-                      </div>
-                    ))}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsBreathingActive(!isBreathingActive)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg cursor-pointer ${
+                    isBreathingActive 
+                      ? 'bg-amber-500 text-slate-950 shadow-amber-500/30' 
+                      : 'bg-[#1e2942] hover:bg-[#28385a] text-slate-200 border border-slate-700'
+                  }`}
+                >
+                  <HeartPulse className={`w-4 h-4 ${isBreathingActive ? 'animate-spin' : 'text-rose-400'}`} />
+                  <span>{isBreathingActive ? `Breathing (${breathingCountdown}s)` : '🧘 60s Box Breathing Reset'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Breathing Animation Banner when active */}
+            {isBreathingActive && (
+              <div className="p-4 rounded-2xl bg-black/50 border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full border-4 border-amber-400 flex items-center justify-center font-black text-amber-300 text-sm animate-pulse">
+                    {breathingCountdown}s
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-amber-300 uppercase tracking-wide">
+                      {breathingPhase === 'Inhale' && '🌬️ Inhale Slowly (Naak se saans andar lo)...'}
+                      {breathingPhase === 'Hold' && '🛑 Hold Breath (Saans roke rakhein)...'}
+                      {breathingPhase === 'Exhale' && '💨 Exhale Slowly (Mooh se saans bahar chhodo)...'}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Yeh aapke heart rate aur cortisol (gussa/stress) ko normal level par lata hai.
+                    </p>
                   </div>
                 </div>
-              );
-            })
-          )}
+                <button
+                  onClick={() => setIsBreathingActive(false)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white text-xs"
+                >
+                  Stop
+                </button>
+              </div>
+            )}
+
+            {/* The Harsh Truth & Reassurance Banner */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-2xl bg-[#141b2d]/80 border border-rose-500/30 space-y-1.5">
+                <p className="font-bold text-rose-400 flex items-center gap-1.5 text-sm">
+                  <Flame className="w-4 h-4" /> 1. Market Band Nahi Ho Raha:
+                </p>
+                <p className="text-slate-300 leading-relaxed">
+                  Market kal bhi khulega, agle hafte bhi rahega aur 10 saal baad bhi rahega. Lekin agar aapne gusse me aaj capital uda diya, to aap kal trade nahi kar payenge.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#141b2d]/80 border border-amber-500/30 space-y-1.5">
+                <p className="font-bold text-amber-400 flex items-center gap-1.5 text-sm">
+                  <AlertTriangle className="w-4 h-4" /> 2. Revenge Trading = 98% Ruin:
+                </p>
+                <p className="text-slate-300 leading-relaxed">
+                  Pehle loss ke baad jo agla trade gusse me liya jata hai, usme 98% probability loss ki hoti hai kyunki dimaag analysis nahi sirf paisa wapis chahta hai.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#141b2d]/80 border border-emerald-500/30 space-y-1.5">
+                <p className="font-bold text-emerald-400 flex items-center gap-1.5 text-sm">
+                  <ShieldCheck className="w-4 h-4" /> 3. Tuition Fee, Not The End:
+                </p>
+                <p className="text-slate-300 leading-relaxed">
+                  Duniya ke har legendary trader (Mark Minervini, Paul Tudor Jones) ka bada loss hua hai. Yeh loss aapki <strong className="text-emerald-300">Market Tuition Fee</strong> hai, agar aap isse seekh kar aaj terminal band kar dein!
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* SECTION 2: HONEST MISTAKE DIAGNOSIS (KAHAN GUKTI HUI?) */}
+          <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  Honest Mistake Diagnosis (Aaj Kahan Galti Hui?)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Jo galtiyan aaj aapse hui hain unpar tap karein taaki hum unka exact psychological solution nikal sakein:
+                </p>
+              </div>
+              <span className="text-xs font-bold text-slate-400">Tap to Select</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              {[
+                { id: 'revenge', label: '🔥 Revenge Trading', desc: 'Pehle loss ka gussa nikalne ke liye turant doosri trade maari bina setup ke', fix: 'Rule: 1 loss ke baad minimum 45 minute ka mandatory screen walk-away break.' },
+                { id: 'overtrading', label: '⚡ Overtrading (4+ Trades)', desc: 'Din me limit se zyada trades li, screen se chipke rahe', fix: 'Rule: Daily Maximum 2 Trades hard limit. Win ho ya Loss terminal close.' },
+                { id: 'oversizing', label: '💣 Oversizing / Heavy Lots', desc: 'Jaldi recover karne ke liye standard lot size se 2x ya 4x bada lot liya', fix: 'Rule: Kal se 50% lot size (sirf 1 lot) par fixed trade karenge jab tak confidence na aaye.' },
+                { id: 'averaging', label: '🕳️ Averaging in Loss (Hope)', desc: 'Loss me ja rahe trade me aur quantity add kar li ki market ghoomega', fix: 'Rule: Losing trade me 1 single quantity bhi add karna suicide hai. Instant SL hit hone par nikalna hai.' },
+                { id: 'no_sl', label: '🚫 Stop-Loss Cut Nahi Kiya', desc: 'SL hit hone par bhi nikalne ki jagah hold kiya ki wapis aayega', fix: 'Rule: System Stop-Loss order terminal me entry ke sath hi place hoga, mental SL kabhi nahi.' },
+                { id: 'fomo', label: '🏃 FOMO Candle Chasing', desc: 'Badi green/red candle bhaagte dekh bina level ke jump kar gaye', fix: 'Rule: Market ko aapke level par aane do, bhaagti train me chadhna band karo.' }
+              ].map(item => {
+                const isSelected = sosSelectedMistakes.includes(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      setSosSelectedMistakes(prev => 
+                        prev.includes(item.id) ? prev.filter(x => x !== item.id) : [...prev, item.id]
+                      );
+                    }}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                      isSelected
+                        ? 'bg-rose-500/15 border-rose-500 text-white shadow-md shadow-rose-500/20'
+                        : 'bg-[#16223b] light:bg-slate-50 border-[#23355b] text-slate-300 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-white light:text-slate-900">{item.label}</span>
+                      <CheckCircle2 className={`w-4 h-4 ${isSelected ? 'text-rose-400' : 'text-slate-600'}`} />
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">{item.desc}</p>
+                    {isSelected && (
+                      <div className="p-2 rounded-xl bg-black/40 border border-rose-500/30 text-[10px] text-rose-300 font-medium animate-in fade-in">
+                        <strong>Antidote:</strong> {item.fix}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SECTION 3: SYSTEMATIC CAPITAL RECOVERY CALCULATOR (ZERO REVENGE FORMULA) */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#1e2942] pb-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white light:text-slate-900 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-emerald-400" />
+                  The "Zero-Revenge" Systematic Recovery Math
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  See how simple, disciplined small daily profits safely recover your loss without any account risk:
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-2 bg-[#16223b] px-3.5 py-1.5 rounded-xl border border-[#23355b]">
+                <span className="text-xs text-slate-400 font-medium">Loss Amount:</span>
+                <span className="text-sm font-bold text-rose-400 font-mono">₹</span>
+                <input
+                  type="number"
+                  value={sosLossAmount}
+                  onChange={(e) => setSosLossAmount(Math.max(100, Number(e.target.value)))}
+                  className="w-24 bg-transparent text-sm font-black text-rose-400 font-mono focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Recovery Comparison Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              
+              {/* Box 1: The Amateur Trap (What Destroys Accounts) */}
+              <div className="p-5 rounded-2xl bg-rose-950/20 border border-rose-500/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                    ❌ The Amateur Mistake (Revenge Trap)
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded border border-rose-500/30">
+                    98% FAIL
+                  </span>
+                </div>
+                <div className="space-y-2 text-xs text-slate-300">
+                  <p>• "Kal 5 ya 10 lot lekar ek hi trade me poora {formatINR(sosLossAmount)} wapis nikalunga."</p>
+                  <p>• 1 trade me 30-40 point ka stop loss lagaunga bina analysis ke.</p>
+                  <p className="text-rose-400 font-bold pt-1">
+                    ⚠️ Reality: Market thoda sa bhi against gaya to bacha hua capital bhi 0 ho jayega aur depression badh jayega.
+                  </p>
+                </div>
+              </div>
+
+              {/* Box 2: The Professional Institutional Recovery */}
+              <div className="p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    ✅ The Pro Recovery Protocol (Safe Math)
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
+                    94% SUCCESS
+                  </span>
+                </div>
+                
+                {/* Math output */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Daily Target (1 Lot, 1:2 R:R):</span>
+                    <span className="font-bold text-emerald-400 font-mono">₹{sosDailyTarget} / day</span>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="300"
+                    max="2500"
+                    step="50"
+                    value={sosDailyTarget}
+                    onChange={(e) => setSosDailyTarget(Number(e.target.value))}
+                    className="w-full accent-emerald-500 cursor-pointer"
+                  />
+
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="text-[11px] text-slate-400">Total Recovery Time:</p>
+                      <p className="text-lg font-black text-emerald-400 font-mono">
+                        {Math.ceil(sosLossAmount / sosDailyTarget)} Trading Sessions
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] text-slate-400">Capital Stress:</p>
+                      <p className="text-sm font-bold text-emerald-300">0% (Safe & Calm)</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <p className="text-xs text-center text-slate-400">
+              💡 Sirf <strong>{Math.ceil(sosLossAmount / sosDailyTarget)} din</strong> discipline se 1-lot trade karke bina kisi tension ke aapka pura {formatINR(sosLossAmount)} recover ho jayega!
+            </p>
+          </div>
+
+          {/* SECTION 4: 5 GOLDEN RULES FOR TOMORROW MORNING */}
+          <div className="p-6 rounded-3xl bg-[#111a2e] light:bg-white border border-[#1e2942] light:border-slate-200 shadow-xl space-y-4">
+            <h3 className="text-base sm:text-lg font-black text-white light:text-slate-900 flex items-center gap-2">
+              <Compass className="w-5 h-5 text-blue-400" />
+              5 Golden Commandments For Tomorrow Morning (Pre-Flight Protocol)
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
+              <div className="p-4 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1.5">
+                <span className="font-bold text-blue-400 flex items-center gap-1.5">
+                  1. Lot Size Cut to 50% 📉
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Kal sirf 1 fixed lot me trade karein. Jab tak 3 consecutive green days na aayein, tab tak lot size nahi badhana hai.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1.5">
+                <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                  2. Maximum 2 Trades Hard Limit 🛑
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Chahe pehle trade me profit ho ya loss, din me maximum 2 trades ke baad terminal close kar dena hai.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1.5">
+                <span className="font-bold text-purple-400 flex items-center gap-1.5">
+                  3. System SL In Terminal 🛡️
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Mental Stop Loss bilkul nahi chalega. Order punch hote hi broker terminal me Stop-Loss order lagana mandatory hai.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1.5">
+                <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                  4. No 9:15 - 9:30 AM Trading ⏱️
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Pehle 15 minute market ko settle hone dein. 9:30 AM ke baad jab clean candle structure bane tabhi setup lena hai.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1.5">
+                <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                  5. Fresh Day 1 Mindset 🌅
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Kal market me 'aaj ka loss recover karne' mat jana. Kal sirf '1 clean setup perfect execute' karne jana hai.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#16223b] border border-[#23355b] space-y-1.5">
+                <span className="font-bold text-rose-400 flex items-center gap-1.5">
+                  6. No Option Buying in Choppy VIX 📊
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Agar VIX 11 se neeche ho to OTM option mat khareedo, sideways market me premium decay se bachein.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 5: INTERACTIVE ACCEPTANCE & PROTECTION CONTRACT */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#16223b] via-[#111a2e] to-[#16223b] border border-blue-500/30 shadow-2xl space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white">
+                  Trader's Discipline & Capital Protection Commitment
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Apne trading career ko protect karne ke liye yeh 3 commitments tick karke Lock karein:
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <label className="flex items-start gap-3 p-3.5 rounded-xl bg-[#0e1628] border border-[#1e2942] cursor-pointer hover:border-blue-500/40 transition-all">
+                <input
+                  type="checkbox"
+                  checked={contractAccept1}
+                  onChange={(e) => setContractAccept1(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-slate-300 leading-relaxed">
+                  <strong>1. Maine aaj ka loss accept kar liya hai:</strong> Main aaj broker terminal dubara open nahi karunga aur koi revenge trade nahi lunga.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 p-3.5 rounded-xl bg-[#0e1628] border border-[#1e2942] cursor-pointer hover:border-blue-500/40 transition-all">
+                <input
+                  type="checkbox"
+                  checked={contractAccept2}
+                  onChange={(e) => setContractAccept2(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-slate-300 leading-relaxed">
+                  <strong>2. 1 Bad Day se mera trading career khatam nahi hota:</strong> Main is loss ko learning aur rule refinement ki tarah use karunga.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 p-3.5 rounded-xl bg-[#0e1628] border border-[#1e2942] cursor-pointer hover:border-blue-500/40 transition-all">
+                <input
+                  type="checkbox"
+                  checked={contractAccept3}
+                  onChange={(e) => setContractAccept3(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-slate-300 leading-relaxed">
+                  <strong>3. Kal main strictly 1 lot & 1:2 R:R follow karunga:</strong> Maximum 2 trades ke baad main terminal close kar dunga.
+                </span>
+              </label>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+              <div className="text-xs text-slate-400">
+                {isSosContractLocked ? (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" /> Day Locked & Capital Protected! You won today's mental battle.
+                  </span>
+                ) : (
+                  <span>Tick all 3 checkboxes to officially lock today's session.</span>
+                )}
+              </div>
+
+              <button
+                disabled={!(contractAccept1 && contractAccept2 && contractAccept3)}
+                onClick={() => setIsSosContractLocked(true)}
+                className={`px-6 py-3 rounded-2xl text-xs font-black transition-all shadow-xl flex items-center gap-2 cursor-pointer ${
+                  isSosContractLocked
+                    ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+                    : contractAccept1 && contractAccept2 && contractAccept3
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/30 transform hover:scale-105 active:scale-95'
+                      : 'bg-[#1e2942] text-slate-500 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+                <span>{isSosContractLocked ? '🔒 Day Successfully Locked' : 'Sign & Lock Today\'s Session'}</span>
+              </button>
+            </div>
+          </div>
+
         </div>
       )}
 
